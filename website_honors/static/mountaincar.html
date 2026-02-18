@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MountainCar</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      margin-top: 20px;
+    }
+    img {
+      border: 2px solid black;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .instructions {
+      font-size: 12px;
+      max-width: 420px;
+      margin: 10px auto;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<h2>MountainCar</h2>
+<img id="frame" width="425" />
+<br>
+<p id="timer" style="font-size:14px; margin-top:6px;">Time: 0.0 s</p>
+<p id="status" style="font-size:14px; margin-top:6px;"></p>
+<div id="laps" style="margin-top:10px; font-size:14px;"></div>
+
+
+
+<div class="instructions">
+  <p> <strong>Goal</strong><br> Reach the flag on the right hill.<br> </p>
+  <p> <strong>Controls</strong><br> 
+  Left / Right Arrow keys. </p> 
+  <p> <strong>Hint</strong><br> Move the car to gain enough momentum to reach the flag. </p>
+</div>
+<p>
+
+<button id="resetBtn">Reset</button>
+<button onclick="leaveGame()">⬅ Back to Menu</button>
+
+
+<script>
+
+if (localStorage.getItem("mountaincarUnlocked") !== "true") {
+    alert("You must complete MountainCar Training first.");
+    window.location.href = "/mountaincar_training.html";
+}
+const frameImg = document.getElementById("frame");
+const resetBtn = document.getElementById("resetBtn");
+const API_BASE = "/mountaincar";
+let episode = 0;
+
+const keys = { ArrowLeft: false, ArrowRight: false };
+
+let stageStartTime = null;
+
+async function resetStage() {
+  await reset(); // call server reset
+  stageStartTime = performance.now();
+}
+
+function getCurrentTime() {
+  if (!stageStartTime) return 0;
+  return (performance.now() - stageStartTime) / 1000;
+}
+
+function updateTimerDisplay() {
+  const timerEl = document.getElementById("timer");
+  if (timerEl) {
+    timerEl.textContent = "Time: " + getCurrentTime().toFixed(1) + " s";
+  }
+}
+
+
+let stepCount = 0;
+const TRAIN_EVERY = 300;
+
+const lapsDiv = document.getElementById("laps");
+
+function updateLaps(laps) {
+  if (!laps || laps.length === 0) {
+    lapsDiv.innerHTML = "";
+    return;
+  }
+
+  let html = "<strong>Lap Times</strong><br>";
+  laps.forEach((t, i) => {
+    html += `Round ${i+1}: ${t} s<br>`;
+  });
+
+  lapsDiv.innerHTML = html;
+}
+
+async function startNewSession() {
+  await fetch("/mountaincar/newsession", { method: "POST" });
+}
+
+async function leaveGame() {
+  await fetch("/mountaincar/newsession", { method: "POST" });
+  window.location.href = "/static/index.html";
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key in keys) keys[e.key] = true;
+});
+
+document.addEventListener("keyup", e => {
+  if (e.key in keys) keys[e.key] = false;
+});
+
+function getHumanAction() {
+  if (keys.ArrowLeft) return 0;
+  if (keys.ArrowRight) return 2;
+  return 1; 
+}
+
+async function reset() {
+  const res = await fetch("/mountaincar/reset", { method: "POST" });
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+}
+
+
+async function step(action) {
+  const res = await fetch(`${API_BASE}/step`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({action: action})
+  });
+
+  const data = await res.json();
+
+  frameImg.src = "data:image/png;base64," + data.frame;
+
+  // update lap times
+  updateLaps(data.laps);
+
+  // if episode ended, reset automatically
+  if (data.done) {
+    episode++;
+    resetStage();
+  }
+}
+
+
+
+let running = false;
+
+async function gameLoop() {
+  if (!running) return;
+
+  const action = getHumanAction();
+  const res = await fetch("/mountaincar/step", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ action: action })
+  });
+
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+
+  updateLaps(data.laps);
+  updateTimerDisplay(); // update every frame
+
+  if (data.done) {
+    await resetStage(); // reset timer + backend
+  }
+
+  setTimeout(gameLoop, 33);
+}
+
+
+startNewSession().then(async () => {
+  await resetStage();
+  running = true;
+  gameLoop();
+});
+
+resetBtn.addEventListener("click", reset);
+
+const statusEl = document.getElementById("status");
+
+// MUST MATCH BACKEND
+const HUMAN_ONLY_ITERS = 3;
+const DECAY = 0.9;
+
+function humanProb() {
+  if (episode < HUMAN_ONLY_ITERS) return 1.0;
+  return Math.max(0.1, Math.pow(DECAY, episode - HUMAN_ONLY_ITERS));
+}
+
+function updateStatus() {
+  statusEl.textContent =
+    `Steps: ${stepCount} | Human control probability: ${humanProb().toFixed(2)}`;
+}
+
+</script>
+
+
+
+</body>
+</html>

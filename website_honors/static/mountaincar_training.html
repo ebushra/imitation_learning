@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MountainCar Training</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; margin-top: 20px; }
+    .game-container { display: inline-block; border: 2px solid black; padding: 8px; position: relative; }
+    img, canvas { display: block; }
+    button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
+    #timer { font-size: 16px; margin-top: 8px; }
+    #stageInfo { font-size: 16px; margin-top: 8px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+
+<div id="instructionsModal">
+  <div id="instructionsModalContent">
+    <h3>MountainCar Training Instructions</h3>
+    <p><strong>Goal:</strong> Reach the green line at the top of the hill for each stage.</p>
+    <p><strong>Controls:</strong> Use the <em>Left</em> and <em>Right Arrow</em> keys to accelerate the car.</p>
+    <p><strong>Hint:</strong> Build momentum by rocking back and forth!</p>
+    <button id="startTrainingBtn">Start Training</button>
+  </div>
+</div>
+
+<style>
+  #instructionsModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  #instructionsModalContent {
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
+  }
+  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
+</style>
+
+
+<h2>MountainCar Training</h2>
+
+<div class="game-container">
+  <img id="frame" width="400"/>
+  <canvas id="overlay" width="400" height="300" style="position:absolute; top:0; left:0;"></canvas>
+</div>
+
+<h3 id="timer">Time: 0.0 s</h3>
+<h3 id="stageInfo"></h3>
+
+<button id="resetBtn">Restart Stage</button>
+<button onclick="location.href='/index.html'">⬅ Back to Menu</button>
+
+<script>
+const frameImg = document.getElementById("frame");
+const overlay = document.getElementById("overlay");
+const resetBtn = document.getElementById("resetBtn");
+const keysPressed = { ArrowLeft:false, ArrowRight:false };
+const API_BASE = "/mountaincar";
+
+let stageIndex = 0;
+let stageStartTime = null;
+let trainingPassed = false;
+
+// Add a start button listener
+document.getElementById('startTrainingBtn').addEventListener('click', () => {
+  document.getElementById('instructionsModal').style.display = 'none';
+  resetStage().then(() => {
+    drawOverlay(overlay, TRAINING_STAGES[stageIndex].goalX);
+    step();
+  });
+});
+
+// --- Training stages (lower hills first) ---
+const TRAINING_STAGES = [
+  { goalX: 0.3, duration: 20 },   // Stage 1: gentle hill
+  { goalX: 0.45, duration: 25 }   // Stage 2: medium hill
+];
+
+document.addEventListener("keydown", e => { if(e.key in keysPressed) keysPressed[e.key] = true; });
+document.addEventListener("keyup", e => { if(e.key in keysPressed) keysPressed[e.key] = false; });
+
+function getAction() {
+  if(keysPressed.ArrowLeft) return 0;
+  if(keysPressed.ArrowRight) return 2;
+  return 1;
+}
+
+function getCurrentTime() {
+  if(!stageStartTime) return 0;
+  return (performance.now() - stageStartTime)/1000;
+}
+
+function updateTimerDisplay() {
+  document.getElementById("timer").textContent = "Time: " + getCurrentTime().toFixed(1) + " s";
+}
+
+function updateStageText() {
+  const s = TRAINING_STAGES[stageIndex];
+  document.getElementById("stageInfo").textContent =
+    `Stage ${stageIndex+1}: Reach x ≥ ${s.goalX} in ${s.duration}s`;
+}
+
+async function resetStage() {
+  await reset();                      // reset backend
+  stageStartTime = performance.now(); // start timer for this stage
+}
+
+
+async function reset() {
+  const stage = TRAINING_STAGES[stageIndex];
+  const res = await fetch(`${API_BASE}/reset`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({training: true})
+  });
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+  stageStartTime = performance.now();
+}
+
+// --- Step function ---
+async function step() {
+  const action = getAction();
+  const res = await fetch(`${API_BASE}/step`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({action: action, training: true})
+  });
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+
+  updateTimerDisplay();
+  updateStageText();
+
+  const stage = TRAINING_STAGES[stageIndex];
+
+  // Check success
+  // ---- TRAINING SUCCESS: car reached green line ----
+  
+  if (data.position >= stage.goalX) {
+    stageIndex++;
+    if(stageIndex >= TRAINING_STAGES.length) {
+      trainingPassed = true;
+      localStorage.setItem("mountaincarUnlocked", "true");
+      alert("Training complete! Full MountainCar unlocked.");
+      window.location.href = "/mountaincar.html";
+      return;
+    }
+    alert(`Stage ${stageIndex} complete! Next goal x ≥ ${TRAINING_STAGES[stageIndex].goalX}`);
+    drawOverlay(overlay, TRAINING_STAGES[stageIndex].goalX);
+    await resetStage();
+    step(); // <-- restart loop immediately
+    return;
+  }
+
+  if(getCurrentTime() > stage.duration) {
+      alert("Time expired! Try building more momentum.");
+      await resetStage();
+      step(); // <-- restart loop immediately
+      return;
+  }
+
+
+  if(!trainingPassed) setTimeout(step, 33);
+}
+
+function drawOverlay(canvas, goalX) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0,0,w,h);
+
+  // REAL MountainCar bounds
+  const minX = -1.2;
+  const maxX = 0.6;
+
+  // map world x → pixel x
+  const goalPixelX = ((goalX - minX) / (maxX - minX)) * w;
+
+  // dotted green goal line
+  ctx.beginPath();
+  ctx.setLineDash([10,8]);
+  ctx.moveTo(goalPixelX, 0);
+  ctx.lineTo(goalPixelX, h);
+  ctx.strokeStyle = "rgba(0,255,0,0.8)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+resetBtn.addEventListener("click", resetStage);
+</script>
+
+</body>
+</html>

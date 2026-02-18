@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Acrobot</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      margin-top: 20px;
+    }
+    img {
+      border: 2px solid black;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .instructions {
+      font-size: 12px;
+      max-width: 420px;
+      margin: 10px auto;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Acrobot</h2>
+<div style="position:relative; display:inline-block;">
+  <img id="frame" width="350" />
+  <canvas id="overlay" width="350" height="350"
+          style="position:absolute; top:0; left:0; pointer-events:none;">
+  </canvas>
+</div>
+
+<br>
+
+<h3 id="timer">Time: 0.0 s</h3>
+<div id="laps" style="font-size:14px; margin-top:8px;"></div>
+
+<div class="instructions">
+  <p> <strong>Goal</strong><br> Swing the pendulum so that its tip rises above the horizontal target line. </p>
+  <p> <strong>Controls</strong><br> Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque. Movement is continuous.</p>
+  <p> <strong>Hint</strong><br> Build momentum by swinging back and forth.</p>
+</div>
+
+<button id="resetBtn">Reset</button>
+<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
+
+<script>
+if (localStorage.getItem("acrobot_training_complete") !== "1") {
+
+  // Stop page from loading the game
+  document.body.style.display = "none";
+
+  // Show popup
+  alert("You must complete Acrobot Training before playing this mode!");
+
+  // Send them to training
+  window.location.replace("/static/acrobot_training.html");
+}
+
+
+const frameImg = document.getElementById("frame");
+const resetBtn = document.getElementById("resetBtn");
+const lapsDiv = document.getElementById("laps");
+const timerEl = document.getElementById("timer");
+
+const API_BASE = "/acrobot";
+const keys = { ArrowLeft: false, ArrowRight: false };
+let startTime = null;
+let laps = [];
+
+// Track keys pressed
+document.addEventListener("keydown", e => { if (e.key in keys) keys[e.key] = true; });
+document.addEventListener("keyup", e => { if (e.key in keys) keys[e.key] = false; });
+
+// Get human action
+function getAction() {
+  if (keys.ArrowLeft) return 0;
+  if (keys.ArrowRight) return 2;
+  return 1;
+}
+
+// Timer helpers
+function startTimer() { startTime = performance.now(); }
+function getCurrentTime() { return startTime ? (performance.now() - startTime)/1000 : 0; }
+function updateTimerDisplay() { timerEl.textContent = `Time: ${getCurrentTime().toFixed(1)} s`; }
+function recordLap(time) {
+  laps.push(time);
+  lapsDiv.innerHTML = laps.map((t,i) => `Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
+}
+
+// Reset the game
+async function reset() {
+  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+  startTimer();
+}
+
+// Step the game
+async function step() {
+  const action = getAction();
+  const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
+  const data = await res.json();
+  frameImg.src = "data:image/png;base64," + data.frame;
+  updateTimerDisplay();
+
+  // Record lap if success
+  if (data.success) {
+    const lapTime = getCurrentTime();
+    recordLap(lapTime);
+    await reset();  // start new round
+  }
+  drawTargetLine();
+
+}
+
+// Main loop
+async function gameLoop() {
+  await step();
+  setTimeout(gameLoop, 33);
+}
+
+const overlay = document.getElementById("overlay");
+
+function drawTargetLine() {
+  const ctx = overlay.getContext("2d");
+  const w = overlay.width;
+  const h = overlay.height;
+
+  ctx.clearRect(0,0,w,h);
+
+  // height of success line (tweak this once)
+  const targetY = 97;
+
+  ctx.beginPath();
+  
+  ctx.setLineDash([8,8]);   // dashed pattern
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 3;
+
+  ctx.moveTo(0, targetY);
+  ctx.lineTo(w, targetY);
+
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+}
+
+// Reset laps when leaving page
+window.addEventListener("beforeunload", () => { laps = []; });
+
+reset().then(gameLoop);
+resetBtn.addEventListener("click", reset);
+</script>
+
+</body>
+</html>

@@ -82,7 +82,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "..", "static")
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/website_honors/static", StaticFiles(directory="static"), name="static")
 
 acrobot = WebAcrobot()
 mountaincar = WebMountainCar()

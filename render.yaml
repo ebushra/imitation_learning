@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: rl-games
+    runtime: python
+    buildCommand: pip install -r website_honors/requirements.txt
+    startCommand: uvicorn website_honors.main:app --host 0.0.0.0 --port 10000
+    plan: free

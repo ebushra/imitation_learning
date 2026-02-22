@@ -1,7 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 numpy
 pillow
 gymnasium[classic-control]
-matplotlib
-python-multipart

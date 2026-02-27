@@ -105,9 +105,11 @@ function drawTarget(){
 }
 
 function getTipPixelY(tip_y){
-  return overlay.height - tip_y * overlay.height;
+  const minY = -2;
+  const maxY = 2;
+  const normalized = (tip_y - minY) / (maxY - minY);
+  return overlay.height - normalized * overlay.height;
 }
-
 function checkTraining(tip_y){
   const tipPixelY = getTipPixelY(tip_y);
   if(tipPixelY <= STAGES[stageIndex].lineY){

@@ -4,3 +4,4 @@ numpy
 pillow
 gymnasium[classic-control]
 pygame==2.6.1
+sdl-config

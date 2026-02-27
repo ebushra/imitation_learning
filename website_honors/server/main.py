@@ -1,40 +1,62 @@
 import os
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI
+import time
+import csv
+import base64
+from io import BytesIO
+
+import numpy as np
+from PIL import Image
+from fastapi import FastAPI, Body
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-
+# Import your environment classes and utilities
 from .envs.acrobot_env import WebAcrobot
 from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
-import base64
-from io import BytesIO
-from PIL import Image
-import numpy as np
+# =====================
+# Setup app and CORS
+# =====================
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all origins for ngrok
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-import csv
-import time
+# =====================
+# Static files
+# =====================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "..", "static")
+if not os.path.exists(STATIC_DIR):
+    raise RuntimeError(f"Static directory does not exist: {STATIC_DIR}")
 
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# =====================
+# Data directory for recording games
+# =====================
 DATA_DIR = "human_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-
+# =====================
+# GameRecorder
+# =====================
 class GameRecorder:
     def __init__(self, name):
         self.name = name
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
-
         self.file = open(f"{DATA_DIR}/{name}.csv", "a", newline="")
         self.writer = csv.writer(self.file)
-
-        # write header once
         if os.stat(f"{DATA_DIR}/{name}.csv").st_size == 0:
             self.writer.writerow([
                 "timestamp","episode","step","elapsed",
@@ -49,7 +71,6 @@ class GameRecorder:
     def log(self, state, action, reward, done, success):
         self.step += 1
         elapsed = time.time() - self.start_time
-
         self.writer.writerow([
             time.time(),
             self.episode,
@@ -67,28 +88,26 @@ acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")
 cartpole_rec = GameRecorder("cartpole")
 
-
+# =====================
+# Utility functions
+# =====================
 def frame_to_base64(frame: np.ndarray) -> str:
-    """
-    Convert an RGB frame (numpy array) to base64 string for browser display.
-    """
     img = Image.fromarray(frame)
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "..", "static")
-
-app = FastAPI()
-app.mount("/website_honors/static", StaticFiles(directory="static"), name="static")
-
+# =====================
+# Initialize environments
+# =====================
 acrobot = WebAcrobot()
 mountaincar = WebMountainCar()
 cartpole = WebCartPole()
-cartpole.training_mode = False  # default
+cartpole.training_mode = False
 
+# =====================
+# Routes
+# =====================
 @app.get("/")
 def root():
     return RedirectResponse(url="/static/index.html")
@@ -97,29 +116,22 @@ def root():
 def index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
+# Add other HTML pages similarly
 @app.get("/cartpole.html")
 def cartpole_page():
     return FileResponse(os.path.join(STATIC_DIR, "cartpole.html"))
-
-@app.get("/cartpole_training.html")
-def cartpole_page():
-    return FileResponse(os.path.join(STATIC_DIR, "cartpole_training.html"))
 
 @app.get("/mountaincar.html")
 def mountaincar_page():
     return FileResponse(os.path.join(STATIC_DIR, "mountaincar.html"))
 
-@app.get("/mountaincar_training.html")
-def mountaincar_page():
-    return FileResponse(os.path.join(STATIC_DIR, "mountaincar_training.html"))
-
+# Example API endpoint
 @app.post("/acrobot/reset")
 def reset_acrobot():
     acrobot.reset()
     acrobot_rec.new_episode()
     frame = acrobot.render()
     return {"frame": frame_to_base64(frame), "success": False}
-
 
 @app.post("/acrobot/step/{action}")
 def step_acrobot(action: int):

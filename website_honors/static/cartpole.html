@@ -65,7 +65,7 @@
 // --- LOCK CHECK: Must complete training first ---
 if (localStorage.getItem("cartpoleUnlocked") !== "true") {
   alert("You must complete CartPole Training first.");
-  window.location.href = "/cartpole_training.html";
+  window.location.href = "/static/cartpole_training.html";
 }
 const frameImg = document.getElementById("frame");
 const overlay = document.getElementById("overlay");

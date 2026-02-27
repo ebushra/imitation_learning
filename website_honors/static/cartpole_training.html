@@ -103,8 +103,8 @@ let trainingPassed = false;
 let laps = [];
 let episodeToken = 0;
 
-let resetting = false;
-
+let resetting = false; 
+  
 let waitingForInput = false;
 
 // Hide modal and start training
@@ -164,9 +164,8 @@ function updateStageText() {
 }
 
 async function resetStage() {
-  episodeToken++;  // invalidate all pending step responses
-  stageStartTime = performance.now();
-  await reset();
+  stageStartTime = performance.now(); // start timer for this stage
+  await reset();                      // reset backend
 }
 
 function showMessage(msg) {
@@ -203,7 +202,7 @@ async function checkTraining(theta) {
       trainingPassed = true;
       localStorage.setItem("cartpoleUnlocked", "true");
       alert("Training Complete! Challenge mode unlocked.");
-      window.location.href = "/cartpole.html";
+      window.location.href = "/static/cartpole.html";
       return;
     }
 
@@ -230,8 +229,6 @@ async function reset() {
   const data = await res.json();
   frameImg.src = "data:image/png;base64," + data.frame;
 
-  // VERY IMPORTANT
-  // allow physics again only after first frame is drawn
   resetting = false;
 }
 
@@ -242,7 +239,7 @@ async function step() {
 
   loopRunning = true;
 
-  const myToken = episodeToken;   // ADD THIS
+  const myToken = episodeToken;
 
   const action = getAction();
   const res = await fetch(`${API_BASE}/step/${action}`, { method:"POST" });
@@ -262,7 +259,12 @@ async function step() {
     recordLap(getCurrentTime());
     await resetStage();
     loopRunning = false;
-    return;   // restart loop cleanly
+
+    if (!trainingPassed) {
+      setTimeout(step, 33);
+    }
+
+    return;
   }
 
   await checkTraining(data.theta);
@@ -307,7 +309,10 @@ function drawGauge(canvas, theta, cartX) {
 
 // --- Initialization ---
 //resetStage().then(() => requestAnimationFrame(step));
-resetBtn.addEventListener("click", resetStage);
+resetBtn.addEventListener("click", async () => {
+  await resetStage();
+  setTimeout(step, 33);
+});
 </script>
 
 </body>

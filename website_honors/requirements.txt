@@ -3,3 +3,4 @@ uvicorn[standard]
 numpy
 pillow
 gymnasium[classic-control]
+pygame

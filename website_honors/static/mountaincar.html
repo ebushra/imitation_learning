@@ -52,7 +52,7 @@
 
 if (localStorage.getItem("mountaincarUnlocked") !== "true") {
     alert("You must complete MountainCar Training first.");
-    window.location.href = "/mountaincar_training.html";
+    window.location.href = "/static/mountaincar_training.html";
 }
 const frameImg = document.getElementById("frame");
 const resetBtn = document.getElementById("resetBtn");
@@ -185,7 +185,7 @@ startNewSession().then(async () => {
   gameLoop();
 });
 
-resetBtn.addEventListener("click", reset);
+resetBtn.addEventListener("click", resetStage);
 
 const statusEl = document.getElementById("status");
 

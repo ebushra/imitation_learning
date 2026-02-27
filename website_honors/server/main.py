@@ -33,12 +33,18 @@ app.add_middleware(
 # =====================
 # Static files
 # =====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "..", "static")
+import os
+from fastapi.staticfiles import StaticFiles
+
+# BASE_DIR is the website_honors folder
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 if not os.path.exists(STATIC_DIR):
     raise RuntimeError(f"Static directory does not exist: {STATIC_DIR}")
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Mount the static folder
+app.mount("/website_honors/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # =====================
 # Data directory for recording games

@@ -3,4 +3,4 @@ uvicorn[standard]
 numpy
 pillow
 gymnasium[classic-control]
-pygame
+pygame==2.6.1

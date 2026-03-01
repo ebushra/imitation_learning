@@ -1,3 +1,4 @@
+# website_honors/server/main_flask.py
 import os
 import time
 import csv
@@ -6,11 +7,7 @@ from io import BytesIO
 
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, Body
-from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from flask import Flask, jsonify, request, send_from_directory, redirect
 
 # Import your environment classes and utilities
 from .envs.acrobot_env import WebAcrobot
@@ -19,32 +16,9 @@ from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
 # =====================
-# Setup app and CORS
+# Setup Flask app
 # =====================
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # allow all origins for ngrok
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# =====================
-# Static files
-# =====================
-import os
-from fastapi.staticfiles import StaticFiles
-
-# BASE_DIR is the website_honors folder
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-if not os.path.exists(STATIC_DIR):
-    raise RuntimeError(f"Static directory does not exist: {STATIC_DIR}")
-
-# Mount the static folder
-app.mount("/website_honors/static", StaticFiles(directory=STATIC_DIR), name="static")
+app = Flask(__name__, static_folder="../static")
 
 # =====================
 # Data directory for recording games
@@ -95,7 +69,7 @@ mountaincar_rec = GameRecorder("mountaincar")
 cartpole_rec = GameRecorder("cartpole")
 
 # =====================
-# Utility functions
+# Utility function
 # =====================
 def frame_to_base64(frame: np.ndarray) -> str:
     img = Image.fromarray(frame)
@@ -112,35 +86,28 @@ cartpole = WebCartPole()
 cartpole.training_mode = False
 
 # =====================
-# Routes
+# Routes for static pages
 # =====================
-@app.get("/")
+@app.route("/")
 def root():
-    return RedirectResponse(url="/static/index.html")
+    return redirect("/static/index.html")
 
-@app.get("/index.html")
-def index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+@app.route("/<path:filename>")
+def serve_static(filename):
+    return send_from_directory(app.static_folder, filename)
 
-# Add other HTML pages similarly
-@app.get("/cartpole.html")
-def cartpole_page():
-    return FileResponse(os.path.join(STATIC_DIR, "cartpole.html"))
-
-@app.get("/mountaincar.html")
-def mountaincar_page():
-    return FileResponse(os.path.join(STATIC_DIR, "mountaincar.html"))
-
-# Example API endpoint
-@app.post("/acrobot/reset")
+# =====================
+# API endpoints
+# =====================
+@app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
     acrobot.reset()
     acrobot_rec.new_episode()
     frame = acrobot.render()
-    return {"frame": frame_to_base64(frame), "success": False}
+    return jsonify({"frame": frame_to_base64(frame), "success": False})
 
-@app.post("/acrobot/step/{action}")
-def step_acrobot(action: int):
+@app.route("/acrobot/step/<int:action>", methods=["POST"])
+def step_acrobot(action):
     obs, reward, done = acrobot.step(action)
     frame = acrobot.render()
     x_tip, y_tip = acrobot.get_tip_position()
@@ -153,62 +120,50 @@ def step_acrobot(action: int):
         success=done
     )
 
-    return {
+    return jsonify({
         "frame": frame_to_base64(frame),
         "success": done,
-        "tip_y": y_tip  # send tip y-coordinate directly to frontend
-    }
+        "tip_y": y_tip
+    })
 
-from pydantic import BaseModel
-
-class StepRequest(BaseModel):
-    action: int
-    training: bool = False
-    goalX: float = 0.5
-
-
-@app.post("/mountaincar/newsession")
+@app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():
     global mountaincar
     mountaincar.close()
     mountaincar = WebMountainCar()
-    return {"status": "new session"}
+    return jsonify({"status": "new session"})
 
-
-from fastapi import Body
-
-
-@app.post("/mountaincar/reset")
-async def reset_mountaincar(data: dict = Body(default={})):
+@app.route("/mountaincar/reset", methods=["POST"])
+def reset_mountaincar():
+    data = request.json or {}
     training = data.get("training", False)
     goal = data.get("goalX", 0.5)
 
     mountaincar.reset(training_mode=training, goal_x=goal)
     mountaincar_rec.new_episode()
 
-    return {
+    return jsonify({
         "frame": frame_to_base64(mountaincar.render()),
         "laps": mountaincar.lap_times
-    }
+    })
 
+@app.route("/mountaincar/step", methods=["POST"])
+def step_mountaincar():
+    data = request.json or {}
+    action = int(data.get("action", 0))
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-
-@app.post("/mountaincar/step")
-def step_mountaincar(req: StepRequest):
-    obs, reward, done, success = mountaincar.step(req.action)
+    obs, reward, done, success = mountaincar.step(action)
 
     mountaincar_rec.log(
         state=obs,
-        action=req.action,
+        action=action,
         reward=reward,
         done=done,
         success=success
     )
 
     position = float(obs[0])
-    return JSONResponse({
+    return jsonify({
         "done": done,
         "success": success,
         "laps": mountaincar.lap_times,
@@ -216,30 +171,21 @@ def step_mountaincar(req: StepRequest):
         "position": position
     })
 
-
-
-from fastapi import Body
-
-@app.post("/cartpole/reset")
-async def reset_cartpole(data: dict = Body(default={})):
+@app.route("/cartpole/reset", methods=["POST"])
+def reset_cartpole():
+    data = request.json or {}
     training = data.get("training", False)
 
-    # IMPORTANT: pass into env reset
     cartpole.reset(training=training)
     cartpole_rec.new_episode()
 
-    return {"frame": render_frame(cartpole)}
+    return jsonify({"frame": render_frame(cartpole)})
 
-@app.post("/cartpole/step/{action}")
-def step_cartpole(action: int):
-
+@app.route("/cartpole/step/<int:action>", methods=["POST"])
+def step_cartpole(action):
     obs, reward, terminated, truncated, info = cartpole.step(action)
-
     x, x_dot, theta, theta_dot = obs
-
     frame_b64 = frame_to_base64(cartpole.render())
-
-    # ONLY failure ends a round
     done = terminated
 
     cartpole_rec.log(
@@ -250,11 +196,10 @@ def step_cartpole(action: int):
         success=not done
     )
 
-    return JSONResponse({
+    return jsonify({
         "frame": frame_b64,
         "done": bool(done),
-        "truncated": bool(truncated),  # <-- new
+        "truncated": bool(truncated),
         "theta": float(theta),
         "cart_x": float(x)
     })
-

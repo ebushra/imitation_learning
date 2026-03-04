@@ -101,10 +101,22 @@ def serve_static(filename):
 # =====================
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
+    # Reset environment
     acrobot.reset()
     acrobot_rec.new_episode()
-    frame = acrobot.render()
-    return jsonify({"frame": frame_to_base64(frame), "success": False})
+    
+    # Render safely
+    try:
+        frame = acrobot.render(mode="rgb_array")  # headless mode
+    except Exception as e:
+        print("Render failed on reset:", e)
+        import numpy as np
+        frame = np.zeros((350, 350, 3), dtype=np.uint8)  # fallback black frame
+
+    return jsonify({
+        "frame": frame_to_base64(frame),
+        "success": False
+    })
 
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):

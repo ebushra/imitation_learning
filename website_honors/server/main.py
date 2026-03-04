@@ -25,35 +25,6 @@ from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
-# =====================
-# Action logging to JSON
-# =====================
-import json
-
-LOG_FILE = os.path.join(DATA_DIR, "all_actions.json")
-if not os.path.exists(LOG_FILE):
-    with open(LOG_FILE, "w") as f:
-        json.dump([], f)
-
-def log_action(env_name, state, action, reward, done, success):
-    entry = {
-        "timestamp": time.time(),
-        "env": env_name,
-        "state": [float(s) for s in state],  # convert float32 -> float
-        "action": action,
-        "reward": float(reward),
-        "done": bool(done),
-        "success": bool(success)
-    }
-    # Load existing data, append, save
-    try:
-        with open(LOG_FILE, "r") as f:
-            data = json.load(f)
-    except Exception:
-        data = []
-    data.append(entry)
-    with open(LOG_FILE, "w") as f:
-        json.dump(data, f)
 
 # =====================
 # Setup Flask app
@@ -240,7 +211,6 @@ def step_acrobot(action):
             done=done,
             success=done
         )
-        log_action("acrobot", obs, action, reward, done, done)
 
         return jsonify({
             "frame": frame_to_base64(frame),
@@ -289,7 +259,6 @@ def step_mountaincar():
         done=done,
         success=success
     )
-    log_action("mountaincar", obs, action, reward, done, success)
 
     frame = mountaincar.render()
     frame_b64 = frame_to_base64(frame)
@@ -339,8 +308,6 @@ def step_cartpole(action):
         done=done,
         success=not done
     )
-
-    log_action("cartpole", obs, action, reward, done, not done)
 
     return jsonify({
         "frame": frame_to_base64(cartpole.render()),

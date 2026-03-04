@@ -108,29 +108,29 @@ def reset_acrobot():
 
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
+    obs = reward = done = None
+    for _ in range(3):
+        obs, reward, done = acrobot.step(action)
     try:
-        for _ in range(3):
-            obs, reward, done = acrobot.step(action)
-            if done:
-                break
         frame = acrobot.render(mode="rgb_array")
-        x_tip, y_tip = acrobot.get_tip_position()
-    
-        acrobot_rec.log(
-            state=obs,
-            action=action,
-            reward=reward,
-            done=done,
-            success=done
-        )
-    
-        return jsonify({
-            "frame": frame_to_base64(frame),
-            "success": done,
-            "tip_y": y_tip
-        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Render failed:", e)
+        frame = np.zeros((350,350,3), dtype=np.uint8)
+    x_tip, y_tip = acrobot.get_tip_position()
+
+    acrobot_rec.log(
+        state=obs,
+        action=action,
+        reward=reward,
+        done=done,
+        success=done
+    )
+
+    return jsonify({
+        "frame": frame_to_base64(frame),
+        "success": done,
+        "tip_y": y_tip
+    })
 
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():

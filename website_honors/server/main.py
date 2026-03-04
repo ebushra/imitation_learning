@@ -147,7 +147,7 @@ def step_acrobot(action):
         )
 
         return jsonify({
-            #"frame": frame_to_base64(frame),
+            "frame": frame_to_base64(frame),
             "success": bool(done),
             "tip_y": y_tip
         })

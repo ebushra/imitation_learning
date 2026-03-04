@@ -130,7 +130,7 @@ async function reset() {
     body: JSON.stringify({})  // send empty JSON object
   });
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+  frameImg.src = "data:image/jpeg;base64," + data.frame;
 }
   
 async function step(action) {
@@ -142,7 +142,7 @@ async function step(action) {
 
   const data = await res.json();
 
-  frameImg.src = "data:image/png;base64," + data.frame;
+  frameImg.src = "data:image/jpeg;base64," + data.frame;
 
   // update lap times
   updateLaps(data.laps);
@@ -169,7 +169,7 @@ async function gameLoop() {
   });
 
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+  frameImg.src = "data:image/jpeg;base64," + data.frame;
 
   updateLaps(data.laps);
   updateTimerDisplay(); // update every frame

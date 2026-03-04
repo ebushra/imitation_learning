@@ -114,7 +114,7 @@ async function reset() {
     body: JSON.stringify({training: true})
   });
   const data = await res.json();
-  frameImg.src = "data:image/jpeg;base64," + data.frame;
+  frameImg.src = "data:image/png;base64," + data.frame;
   stageStartTime = performance.now();
 }
 
@@ -127,8 +127,8 @@ async function step() {
     body: JSON.stringify({action: action, training: true})
   });
   const data = await res.json();
-  frameImg.src = "data:image/jpeg;base64," + data.frame;
-
+  frameImg.src = "data:image/png;base64," + data.frame;
+  
   updateTimerDisplay();
   updateStageText();
 

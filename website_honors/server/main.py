@@ -152,7 +152,10 @@ def step_mountaincar():
     data = request.json or {}
     action = int(data.get("action", 0))
 
-    obs, reward, done, success = mountaincar.step(action)
+    for _ in range(3):
+        obs, reward, done, success = mountaincar.step(action)
+        if done:
+            break
 
     mountaincar_rec.log(
         state=obs,
@@ -162,12 +165,15 @@ def step_mountaincar():
         success=success
     )
 
+    frame = mountaincar.render()
+    frame_b64 = frame_to_base64(frame)
+
     position = float(obs[0])
     return jsonify({
         "done": done,
         "success": success,
         "laps": mountaincar.lap_times,
-        "frame": frame_to_base64(mountaincar.render()),
+        "frame": frame_b64,
         "position": position
     })
 

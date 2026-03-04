@@ -1,5 +1,5 @@
-# website_honors/server/main_flask.py
 import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 import time
 import csv
 import base64

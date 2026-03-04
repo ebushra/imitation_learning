@@ -108,7 +108,10 @@ def reset_acrobot():
 
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
-    obs, reward, done = acrobot.step(action)
+    for _ in range(3):
+        obs, reward, done = acrobot.step(action)
+        if done:
+            break
     frame = acrobot.render()
     x_tip, y_tip = acrobot.get_tip_position()
 

@@ -179,7 +179,7 @@ def reset_cartpole():
     data = request.json or {}
     training = data.get("training", False)
 
-    cartpole.reset(training=training)
+    cartpole.reset()
     cartpole_rec.new_episode()
 
     x, x_dot, theta, theta_dot = cartpole.get_state()

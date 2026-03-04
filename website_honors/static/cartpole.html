@@ -3,40 +3,13 @@
 <head>
   <title>CartPole</title>
   <style>
-    body {
-      text-align: center;
-      font-family: sans-serif;
-      margin-top: 20px;
-    }
-    .game-container {
-      display: inline-block;
-      border: 2px solid black;
-      padding: 8px;
-      position: relative;
-    }
-    img, canvas {
-      display: block;
-    }
-    button {
-      padding: 8px 16px;
-      margin: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #timer {
-      margin-top: 8px;
-      font-size: 16px;
-    }
-    #laps {
-      font-size: 14px;
-      margin-top: 8px;
-    }
-    .instructions {
-      font-size: 12px;
-      max-width: 420px;
-      margin: 10px auto;
-      text-align: left;
-    }
+    body { text-align:center; font-family:sans-serif; margin-top:20px; }
+    .game-container { display:inline-block; border:2px solid black; padding:8px; position:relative; }
+    canvas { display:block; background:#eee; }
+    button { padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
+    #timer { margin-top:8px; font-size:16px; }
+    #laps { font-size:14px; margin-top:8px; }
+    .instructions { font-size:12px; max-width:420px; margin:10px auto; text-align:left; }
   </style>
 </head>
 <body>
@@ -44,9 +17,7 @@
 <h2>CartPole</h2>
 
 <div class="game-container">
-  <img id="frame" width="400" />
-  <canvas id="overlay" width="400" height="300" 
-          style="position:absolute; top:0; left:0;"></canvas>
+  <canvas id="cartpoleCanvas" width="400" height="300"></canvas>
 </div>
 
 <h3 id="timer">Time: 0.0 s</h3>
@@ -55,20 +26,14 @@
 <div class="instructions">
   <p><strong>Goal</strong><br>Keep the pole balanced upright on the cart for as long as possible.</p>
   <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to move the cart.</p>
-  <p><strong>Hint</strong><br>Apply small, quick corrective moves.</p>
 </div>
 
 <button id="resetBtn">Reset</button>
-<button onclick="location.href='/index.html'">⬅ Back to Menu</button>
+<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
-// --- LOCK CHECK: Must complete training first ---
-if (localStorage.getItem("cartpoleUnlocked") !== "true") {
-  alert("You must complete CartPole Training first.");
-  window.location.href = "/static/cartpole_training.html";
-}
-const frameImg = document.getElementById("frame");
-const overlay = document.getElementById("overlay");
+const canvas = document.getElementById("cartpoleCanvas");
+const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
 const keysPressed = { ArrowLeft: false, ArrowRight: false };
 const API_BASE = "/cartpole";
@@ -76,136 +41,109 @@ const API_BASE = "/cartpole";
 let startTime = null;
 let laps = [];
 
-// Listen for keys
-document.addEventListener("keydown", e => { if(e.key in keysPressed) keysPressed[e.key] = true; });
-document.addEventListener("keyup", e => { if(e.key in keysPressed) keysPressed[e.key] = false; });
+// --- Keyboard input ---
+document.addEventListener("keydown", e => { if(e.key in keysPressed) keysPressed[e.key]=true; });
+document.addEventListener("keyup", e => { if(e.key in keysPressed) keysPressed[e.key]=false; });
 
 // Map pressed keys to actions
 function getAction() {
-  if (keysPressed.ArrowLeft) return 2;   // push left
-  if (keysPressed.ArrowRight) return 1;  // push right
+  if (keysPressed.ArrowLeft) return 2; // push left
+  if (keysPressed.ArrowRight) return 1; // push right
   return 0; // no-op
 }
 
-// Timer functions
-function startTimer() {
-  startTime = performance.now();
-}
-
-function getCurrentTime() {
-  if (!startTime) return 0;
-  return (performance.now() - startTime) / 1000;
-}
-
-function updateTimerDisplay() {
-  document.getElementById("timer").textContent =
-    "Time: " + getCurrentTime().toFixed(1) + " s";
-}
-
+// Timer
+function startTimer() { startTime = performance.now(); }
+function getCurrentTime() { return startTime ? (performance.now() - startTime)/1000 : 0; }
+function updateTimerDisplay() { document.getElementById("timer").textContent = "Time: " + getCurrentTime().toFixed(1) + " s"; }
 function recordLap(time) {
   laps.push(time);
   const lapsDiv = document.getElementById("laps");
   lapsDiv.innerHTML = laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
 }
 
-// Reset function
-async function reset() {
-  const res = await fetch(`${API_BASE}/reset`, { method:"POST" });
-  const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
-  startTimer();
-}
+// --- Draw CartPole ---
+function drawCartPole(state, theta, cartX) {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// Step function
-async function step() {
-  const action = getAction();
-  const res = await fetch(`${API_BASE}/step/${action}`, { method:"POST" });
-  const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+  // --- Track ---
+  ctx.fillStyle = "#ddd";
+  ctx.fillRect(0, canvas.height-40, canvas.width, 5);
 
-  // Update timer
-  updateTimerDisplay();
+  // --- Cart ---
+  const cartWidth = 50, cartHeight = 30;
+  const trackWidth = 4.8; // meters
+  const pixelsPerMeter = canvas.width / trackWidth;
+  const cartPixelX = canvas.width/2 + cartX*pixelsPerMeter - cartWidth/2;
+  const cartY = canvas.height - 60;
+  ctx.fillStyle = "blue";
+  ctx.fillRect(cartPixelX, cartY, cartWidth, cartHeight);
 
-  // Record lap if done
-  if (data.done) {
-    const lapTime = getCurrentTime();
-    recordLap(lapTime);
-    await reset();
-  }
+  // --- Pole ---
+  const poleLength = 100;
+  const poleX = cartPixelX + cartWidth/2 + poleLength * Math.sin(theta);
+  const poleY = cartY - poleLength * Math.cos(theta);
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(cartPixelX + cartWidth/2, cartY);
+  ctx.lineTo(poleX, poleY);
+  ctx.stroke();
 
-  // Draw the safe zone gauge
-  drawGauge(overlay, data.theta, data.cart_x);
-}
-
-function drawGauge(canvas, theta, cartX) {
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0,0,w,h);
-
-  // Horizontal cart movement
-    const worldWidth = 4.8;        // Gym track width in meters
-    const pixelsPerMeter = w / worldWidth;
-    const cartPixelX = (w / 2) + cartX * pixelsPerMeter + 7;
-
-
-  // ***** CRITICAL FIX *****
-  // Match the actual pole base height in the PNG
-  const pivotX = cartPixelX;
-  const pivotY = 200;
+  // --- Gauge (safe zone) ---
+  const pivotX = cartPixelX + cartWidth/2;
+  const pivotY = cartY;
 
   const radius = 80;
-  const safeAngle = 12 * Math.PI/180;
+  const safeAngle = 12 * Math.PI / 180; // 12 degrees
 
-  // ---------- RED HALF ARC ----------
-  // Only top semicircle
+  // Red semicircle
   ctx.beginPath();
-  ctx.arc(
-    pivotX,
-    pivotY,
-    radius,
-    Math.PI,      // left horizontal
-    0,            // right horizontal
-    false
-  );
-  ctx.strokeStyle = "rgba(255, 0, 0, 0.35)";
+  ctx.arc(pivotX, pivotY, radius, Math.PI, 0, false);
+  ctx.strokeStyle = "rgba(255,0,0,0.35)";
   ctx.lineWidth = 6;
   ctx.stroke();
 
-
-  // ---------- GREEN SAFE WINDOW ----------
+  // Green safe-angle arc
   ctx.beginPath();
-  ctx.arc(
-    pivotX,
-    pivotY,
-    radius,
-    -Math.PI/2 - safeAngle,
-    -Math.PI/2 + safeAngle,
-    false
-  );
-  ctx.strokeStyle = "rgba(0, 255, 0, 0.5)";
+  ctx.arc(pivotX, pivotY, radius, -Math.PI/2 - safeAngle, -Math.PI/2 + safeAngle, false);
+  ctx.strokeStyle = "rgba(0,255,0,0.5)";
   ctx.lineWidth = 6;
   ctx.stroke();
-
-
-  // ---------- GREEN UPRIGHT DOT ----------
-  //ctx.beginPath();
-  //ctx.arc(pivotX, pivotY - radius, 7, 0, Math.PI*2);
-  //ctx.fillStyle = "lime";
-  //ctx.fill();
+}
+  
+// --- Reset / Step ---
+async function reset() {
+  const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
+  const data = await res.json();
+  startTimer();
+  return data.state;
 }
 
+async function step(state) {
+  const action = getAction();
+  const res = await fetch(`${API_BASE}/step/${action}`, {method:"POST"});
+  const data = await res.json();
+  drawCartPole(data.state);
+  updateTimerDisplay();
 
+  if (data.done) {
+    recordLap(getCurrentTime());
+    return await reset();
+  } else {
+    return data.state;
+  }
+}
 
-// Main game loop (~30 FPS)
+// --- Game loop ---
+let currentState = null;
 async function gameLoop() {
-  await step();
-  setTimeout(gameLoop, 33);
+  currentState = await step(currentState);
+  setTimeout(gameLoop, 33); // ~30 FPS
 }
 
 // Initialize
-reset().then(gameLoop);
+reset().then(state => { currentState = state; gameLoop(); });
 resetBtn.addEventListener("click", reset);
 </script>
 

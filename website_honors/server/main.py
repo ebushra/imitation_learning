@@ -122,8 +122,8 @@ def reset_acrobot():
 def step_acrobot(action):
     try:
         # Step the environment a few times for smoother motion
-        for _ in range(3):
-            obs, reward, done = acrobot.step(action)
+       
+        obs, reward, done = acrobot.step(action)
 
         # Render (no mode argument, use whatever your wrapper provides)
         try:
@@ -183,10 +183,8 @@ def step_mountaincar():
     data = request.json or {}
     action = int(data.get("action", 0))
 
-    for _ in range(3):
-        obs, reward, done, success = mountaincar.step(action)
-        if done:
-            break
+    
+    obs, reward, done, success = mountaincar.step(action)
 
     mountaincar_rec.log(
         state=obs,

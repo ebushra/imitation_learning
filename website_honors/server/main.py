@@ -71,10 +71,10 @@ cartpole_rec = GameRecorder("cartpole")
 # =====================
 # Utility function
 # =====================
-def frame_to_base64_jpeg(frame, quality=50):
+def frame_to_base64(frame: np.ndarray) -> str:
     img = Image.fromarray(frame)
-    buffer = io.BytesIO()
-    img.save(buffer, format="JPEG", quality=quality)
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 # =====================
@@ -114,7 +114,7 @@ def reset_acrobot():
         frame = np.zeros((350, 350, 3), dtype=np.uint8)  # fallback black frame
 
     return jsonify({
-        "frame": frame_to_base64_jpeg(frame, quality=50),
+        "frame": frame_to_base64(frame),
         "success": False
     })
 
@@ -147,7 +147,7 @@ def step_acrobot(action):
         )
 
         return jsonify({
-            "frame": frame_to_base64_jpeg(frame, quality=50),
+            "frame": frame_to_base64(frame),
             "success": bool(done),
             "tip_y": y_tip
         })
@@ -174,7 +174,7 @@ def reset_mountaincar():
     mountaincar_rec.new_episode()
 
     return jsonify({
-        "frame": frame_to_base64_jpeg(mountaincar.render(), quality=50),
+        "frame": frame_to_base64(mountaincar.render()),
         "laps": mountaincar.lap_times
     })
 
@@ -197,7 +197,7 @@ def step_mountaincar():
     )
 
     frame = mountaincar.render()
-    frame_b64 = frame_to_base64_jpeg(frame)
+    frame_b64 = frame_to_base64(frame)
 
     position = float(obs[0])
     return jsonify({

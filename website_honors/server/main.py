@@ -171,21 +171,21 @@ def step_mountaincar():
         "position": position
     })
 
-@app.route("/cartpole/reset", methods=["POST"])
+@app.post("/cartpole/reset")
 def reset_cartpole():
-    data = request.json or {}
-    training = data.get("training", False)
-
-    cartpole.reset(training=training)
+    cartpole.reset(training=False)
     cartpole_rec.new_episode()
+    # Return only numeric state
+    x, x_dot, theta, theta_dot = cartpole.get_state()
+    return {
+        "done": False,
+        "state": [x, x_dot, theta, theta_dot]
+    }
 
-    return jsonify({"frame": render_frame(cartpole)})
-
-@app.route("/cartpole/step/<int:action>", methods=["POST"])
-def step_cartpole(action):
+@app.post("/cartpole/step/{action}")
+def step_cartpole(action: int):
     obs, reward, terminated, truncated, info = cartpole.step(action)
     x, x_dot, theta, theta_dot = obs
-    frame_b64 = frame_to_base64(cartpole.render())
     done = terminated
 
     cartpole_rec.log(
@@ -196,10 +196,9 @@ def step_cartpole(action):
         success=not done
     )
 
-    return jsonify({
-        "frame": frame_b64,
-        "done": bool(done),
-        "truncated": bool(truncated),
-        "theta": float(theta),
-        "cart_x": float(x)
-    })
+    # Return numeric state only
+    return {
+        "state": [x, x_dot, theta, theta_dot],
+        "done": done,
+        "truncated": truncated
+    }

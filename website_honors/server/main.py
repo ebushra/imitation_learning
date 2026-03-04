@@ -1,13 +1,3 @@
-import subprocess
-
-# Path to your repo (adjust if your server root is different)
-GIT_REPO_PATH = "/opt/render/project/src/imitation_learning"
-
-# GitHub commit info
-GIT_USER = "ebushra"
-GIT_EMAIL = "ecbushra311@gmail.com"
-GIT_BRANCH = "human_data"  # or "master"
-
 import os
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 import time
@@ -25,7 +15,6 @@ from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
-
 # =====================
 # Setup Flask app
 # =====================
@@ -40,59 +29,19 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # =====================
 # GameRecorder
 # =====================
-import os
-import time
-import csv
-import subprocess
-
 class GameRecorder:
-    def __init__(self, name, repo_path, branch="human_data"):
+    def __init__(self, name):
         self.name = name
-        self.repo_path = repo_path  # path to your local Git repo
-        self.branch = branch
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
-
-        # Make sure data folder exists
-        self.data_dir = os.path.join(repo_path, "human_data")
-        os.makedirs(self.data_dir, exist_ok=True)
-
-        self.file_path = os.path.join(self.data_dir, f"{name}.csv")
-        self.file = open(self.file_path, "a", newline="")
+        self.file = open(f"{DATA_DIR}/{name}.csv", "a", newline="")
         self.writer = csv.writer(self.file)
-        if os.stat(self.file_path).st_size == 0:
+        if os.stat(f"{DATA_DIR}/{name}.csv").st_size == 0:
             self.writer.writerow([
                 "timestamp","episode","step","elapsed",
                 "state","action","reward","done","success"
             ])
-
-        # Ensure branch exists
-        self._init_git_branch()
-
-    def _init_git_branch(self):
-        # Check out the branch, create if it doesn't exist
-        subprocess.run(
-            ["git", "fetch"],
-            cwd=self.repo_path,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        result = subprocess.run(
-            ["git", "rev-parse", "--verify", self.branch],
-            cwd=self.repo_path,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        if result.returncode != 0:
-            # Branch doesn't exist, create it
-            subprocess.run(
-                ["git", "checkout", "-b", self.branch],
-                cwd=self.repo_path
-            )
-        else:
-            subprocess.run(
-                ["git", "checkout", self.branch],
-                cwd=self.repo_path
-            )
 
     def new_episode(self):
         self.episode += 1
@@ -114,21 +63,6 @@ class GameRecorder:
             success
         ])
         self.file.flush()
-
-        # Commit and push the CSV to GitHub
-        self._git_push()
-
-    def _git_push(self):
-        try:
-            subprocess.run(["git", "add", self.file_path], cwd=self.repo_path, check=True)
-            subprocess.run(
-                ["git", "commit", "-m", f"{self.name}: episode {self.episode} step {self.step}"],
-                cwd=self.repo_path,
-                check=False  # allow no-op if nothing changed
-            )
-            subprocess.run(["git", "push", "origin", self.branch], cwd=self.repo_path, check=False)
-        except Exception as e:
-            print("Git push failed:", e)
 
 acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")

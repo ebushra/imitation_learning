@@ -152,8 +152,10 @@ def step_acrobot(action):
             "tip_y": y_tip
         })
     except Exception as e:
-        print("Error in step_acrobot:", e)
-        return jsonify({"error": str(e)}), 500
+        # safer error reporting
+        tb = traceback.format_exc()
+        print("Error in step_acrobot:", tb)
+        return jsonify({"error": str(e), "trace": tb}), 500
 
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():

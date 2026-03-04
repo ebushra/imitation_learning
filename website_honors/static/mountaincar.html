@@ -124,12 +124,15 @@ function getHumanAction() {
 }
 
 async function reset() {
-  const res = await fetch("/mountaincar/reset", { method: "POST" });
+  const res = await fetch("/mountaincar/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})  // send empty JSON object
+  });
   const data = await res.json();
   frameImg.src = "data:image/png;base64," + data.frame;
 }
-
-
+  
 async function step(action) {
   const res = await fetch(`${API_BASE}/step`, {
     method: "POST",

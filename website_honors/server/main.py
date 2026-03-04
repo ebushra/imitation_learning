@@ -174,26 +174,30 @@ def step_mountaincar():
 from fastapi.responses import JSONResponse
 from .utils.render import render_frame  # make sure you have this utility
 
-@app.post("/cartpole/reset")
-async def reset_cartpole(data: dict = Body(default={})):
+@app.route("/cartpole/reset", methods=["POST"])
+def reset_cartpole():
+    data = request.json or {}
     training = data.get("training", False)
 
-    # IMPORTANT: pass into env reset
     cartpole.reset(training=training)
     cartpole_rec.new_episode()
 
-    return {"frame": render_frame(cartpole)}
+    x, x_dot, theta, theta_dot = cartpole.get_state()
 
-@app.post("/cartpole/step/{action}")
-def step_cartpole(action: int):
+    return jsonify({
+        "frame": frame_to_base64(cartpole.render()),
+        "done": False,
+        "truncated": False,
+        "theta": float(theta),
+        "cart_x": float(x)
+    })
 
+
+@app.route("/cartpole/step/<int:action>", methods=["POST"])
+def step_cartpole(action):
     obs, reward, terminated, truncated, info = cartpole.step(action)
 
     x, x_dot, theta, theta_dot = obs
-
-    frame_b64 = frame_to_base64(cartpole.render())
-
-    # ONLY failure ends a round
     done = terminated
 
     cartpole_rec.log(
@@ -204,10 +208,10 @@ def step_cartpole(action: int):
         success=not done
     )
 
-    return JSONResponse({
-        "frame": frame_b64,
+    return jsonify({
+        "frame": frame_to_base64(cartpole.render()),
         "done": bool(done),
-        "truncated": bool(truncated),  # <-- new
+        "truncated": bool(truncated),
         "theta": float(theta),
         "cart_x": float(x)
     })

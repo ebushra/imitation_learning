@@ -97,7 +97,7 @@ function recordLap(time) {
 async function reset() {
   const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
   const data = await res.json();
-  frameImg.src = "data:image/jpeg;base64," + data.frame;
+  frameImg.src = "data:image/png;base64," + data.frame;
   startTimer();
 }
 
@@ -106,7 +106,7 @@ async function step() {
   const action = getAction();
   const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
   const data = await res.json();
-  frameImg.src = "data:image/jpeg;base64," + data.frame;
+  frameImg.src = "data:image/png;base64," + data.frame;
   updateTimerDisplay();
 
   // Record lap if success

@@ -171,17 +171,29 @@ def step_mountaincar():
         "position": position
     })
 
+from fastapi.responses import JSONResponse
+from .utils.render import render_frame  # make sure you have this utility
+
+# --- Reset CartPole ---
 @app.post("/cartpole/reset")
 def reset_cartpole():
     cartpole.reset(training=False)
     cartpole_rec.new_episode()
-    # Return only numeric state
+    # Get numeric state
     x, x_dot, theta, theta_dot = cartpole.get_state()
-    return {
+    # Render frame to base64
+    frame_b64 = render_frame(cartpole)
+    return JSONResponse({
+        "frame": frame_b64,
+        "state": [x, x_dot, theta, theta_dot],
+        "theta": theta,
+        "cart_x": x,
         "done": False,
-        "state": [x, x_dot, theta, theta_dot]
-    }
+        "truncated": False
+    })
 
+
+# --- Step CartPole ---
 @app.post("/cartpole/step/{action}")
 def step_cartpole(action: int):
     obs, reward, terminated, truncated, info = cartpole.step(action)
@@ -196,9 +208,14 @@ def step_cartpole(action: int):
         success=not done
     )
 
-    # Return numeric state only
-    return {
+    # Render frame to base64
+    frame_b64 = render_frame(cartpole)
+
+    return JSONResponse({
+        "frame": frame_b64,
         "state": [x, x_dot, theta, theta_dot],
+        "theta": theta,
+        "cart_x": x,
         "done": done,
         "truncated": truncated
-    }
+    })

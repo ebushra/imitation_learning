@@ -1,3 +1,13 @@
+import subprocess
+
+# Path to your repo (adjust if your server root is different)
+GIT_REPO_PATH = "/opt/render/project/src/imitation_learning"
+
+# GitHub commit info
+GIT_USER = "ebushra"
+GIT_EMAIL = "ecbushra311@gmail.com"
+GIT_BRANCH = "human_data"  # or "master"
+
 import os
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 import time
@@ -16,6 +26,36 @@ from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
 # =====================
+# Action logging to JSON
+# =====================
+import json
+
+LOG_FILE = os.path.join(DATA_DIR, "all_actions.json")
+if not os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "w") as f:
+        json.dump([], f)
+
+def log_action(env_name, state, action, reward, done, success):
+    entry = {
+        "timestamp": time.time(),
+        "env": env_name,
+        "state": [float(s) for s in state],  # convert float32 -> float
+        "action": action,
+        "reward": float(reward),
+        "done": bool(done),
+        "success": bool(success)
+    }
+    # Load existing data, append, save
+    try:
+        with open(LOG_FILE, "r") as f:
+            data = json.load(f)
+    except Exception:
+        data = []
+    data.append(entry)
+    with open(LOG_FILE, "w") as f:
+        json.dump(data, f)
+
+# =====================
 # Setup Flask app
 # =====================
 app = Flask(__name__, static_folder="../static")
@@ -29,19 +69,59 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # =====================
 # GameRecorder
 # =====================
+import os
+import time
+import csv
+import subprocess
+
 class GameRecorder:
-    def __init__(self, name):
+    def __init__(self, name, repo_path, branch="human_data"):
         self.name = name
+        self.repo_path = repo_path  # path to your local Git repo
+        self.branch = branch
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
-        self.file = open(f"{DATA_DIR}/{name}.csv", "a", newline="")
+
+        # Make sure data folder exists
+        self.data_dir = os.path.join(repo_path, "human_data")
+        os.makedirs(self.data_dir, exist_ok=True)
+
+        self.file_path = os.path.join(self.data_dir, f"{name}.csv")
+        self.file = open(self.file_path, "a", newline="")
         self.writer = csv.writer(self.file)
-        if os.stat(f"{DATA_DIR}/{name}.csv").st_size == 0:
+        if os.stat(self.file_path).st_size == 0:
             self.writer.writerow([
                 "timestamp","episode","step","elapsed",
                 "state","action","reward","done","success"
             ])
+
+        # Ensure branch exists
+        self._init_git_branch()
+
+    def _init_git_branch(self):
+        # Check out the branch, create if it doesn't exist
+        subprocess.run(
+            ["git", "fetch"],
+            cwd=self.repo_path,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", self.branch],
+            cwd=self.repo_path,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        if result.returncode != 0:
+            # Branch doesn't exist, create it
+            subprocess.run(
+                ["git", "checkout", "-b", self.branch],
+                cwd=self.repo_path
+            )
+        else:
+            subprocess.run(
+                ["git", "checkout", self.branch],
+                cwd=self.repo_path
+            )
 
     def new_episode(self):
         self.episode += 1
@@ -63,6 +143,21 @@ class GameRecorder:
             success
         ])
         self.file.flush()
+
+        # Commit and push the CSV to GitHub
+        self._git_push()
+
+    def _git_push(self):
+        try:
+            subprocess.run(["git", "add", self.file_path], cwd=self.repo_path, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", f"{self.name}: episode {self.episode} step {self.step}"],
+                cwd=self.repo_path,
+                check=False  # allow no-op if nothing changed
+            )
+            subprocess.run(["git", "push", "origin", self.branch], cwd=self.repo_path, check=False)
+        except Exception as e:
+            print("Git push failed:", e)
 
 acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")
@@ -145,6 +240,7 @@ def step_acrobot(action):
             done=done,
             success=done
         )
+        log_action("acrobot", obs, action, reward, done, done)
 
         return jsonify({
             "frame": frame_to_base64(frame),
@@ -193,6 +289,7 @@ def step_mountaincar():
         done=done,
         success=success
     )
+    log_action("mountaincar", obs, action, reward, done, success)
 
     frame = mountaincar.render()
     frame_b64 = frame_to_base64(frame)
@@ -242,6 +339,8 @@ def step_cartpole(action):
         done=done,
         success=not done
     )
+
+    log_action("cartpole", obs, action, reward, done, not done)
 
     return jsonify({
         "frame": frame_to_base64(cartpole.render()),

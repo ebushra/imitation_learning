@@ -13,36 +13,23 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; }
 
 #instructionsModal {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;
+    z-index:10;
 }
 #instructionsModalContent {
-    background: white;
-    padding: 20px;
-    border-radius: 6px;
-    max-width: 400px;
-    text-align: left;
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
 }
-#instructionsModal button {
-    display: block;
-    margin: 10px auto 0 auto;
-}
+#instructionsModal button { display: block; margin: 10px auto 0 auto; }
 </style>
 </head>
-
 <body>
 
 <div id="instructionsModal">
     <div id="instructionsModalContent">
         <h3>CartPole Training Instructions</h3>
         <p><strong>Goal:</strong> Complete each stage by holding the pole within the allowed angle.</p>
-        <p><strong>Controls:</strong> Use the Left and Right Arrow keys to move the cart.</p>
+        <p><strong>Controls:</strong> Use Left/Right Arrow keys to move the cart.</p>
         <p><strong>Hint:</strong> Small, careful corrections are key!</p>
         <button id="startTrainingBtn">Start Training</button>
     </div>
@@ -60,78 +47,52 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 <div id="laps"></div>
 
 <div class="instructions">
-    <p><strong>Goal</strong><br>
-    Complete each stage by holding the pole within the allowed angle.</p>
-    <p><strong>Controls</strong><br>
-    Use the <em>Left</em> and <em>Right Arrow</em> keys to move the cart.</p>
-    <p><strong>Hint</strong><br>
-    Small, careful corrections are key!</p>
+    <p><strong>Goal:</strong> Complete each stage by holding the pole within the allowed angle.</p>
+    <p><strong>Controls:</strong> Left/Right Arrow keys.</p>
+    <p><strong>Hint:</strong> Small corrections are key!</p>
 </div>
 
 <button id="resetBtn">Restart Stage</button>
-<button onclick="location.href='/index.html'">⬅ Back to Menu</button>
+<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
+const API_BASE = "/cartpole";
 const frameImg = document.getElementById("frame");
 const overlay = document.getElementById("overlay");
 const resetBtn = document.getElementById("resetBtn");
 
-const keysPressed = { ArrowLeft: false, ArrowRight: false };
-const API_BASE = "/cartpole";
+const keys = { ArrowLeft: false, ArrowRight: false };
+document.addEventListener("keydown", e => { if(e.key in keys) keys[e.key] = true; });
+document.addEventListener("keyup", e => { if(e.key in keys) keys[e.key] = false; });
 
-let stageIndex = 0;
 let stageStartTime = null;
-let trainingPassed = false;
 let laps = [];
-let resetting = false;
-let waitingForInput = false;
-let loopRunning = false;
+let trainingPassed = false;
+let stageIndex = 0;
 
 const TRAINING_STAGES = [
     { angle: 20, duration: 30 },
     { angle: 15, duration: 30 }
 ];
 
-document.getElementById('startTrainingBtn').addEventListener('click', ()=>{
-    document.getElementById('instructionsModal').style.display = 'none';
-    resetStage().then(() => setTimeout(step, 33));
-});
-
-document.addEventListener("keydown", e => {
-    if (e.key in keysPressed) {
-        keysPressed[e.key] = true;
-        waitingForInput = false;
-    }
-});
-
-document.addEventListener("keyup", e => {
-    if (e.key in keysPressed) keysPressed[e.key] = false;
-});
-
 function getAction() {
-    if (waitingForInput) return 0;
-    if (keysPressed.ArrowLeft) return 2;
-    if (keysPressed.ArrowRight) return 1;
+    if (keys.ArrowLeft) return 2;
+    if (keys.ArrowRight) return 1;
     return 0;
 }
 
 function getCurrentTime() {
-    if (!stageStartTime) return 0;
-    return (performance.now() - stageStartTime) / 1000;
+    return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0;
 }
 
 function updateTimerDisplay() {
-    document.getElementById("timer").textContent =
-        "Time: " + getCurrentTime().toFixed(1) + " s";
+    document.getElementById("timer").textContent = "Time: " + getCurrentTime().toFixed(1) + " s";
 }
 
 function recordLap(time) {
     laps.push(time);
-    document.getElementById("laps").innerHTML =
-        laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
+    document.getElementById("laps").innerHTML = laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
 }
-
-function radToDeg(r) { return r * 180 / Math.PI; }
 
 function updateStageText() {
     const s = TRAINING_STAGES[stageIndex];
@@ -140,74 +101,25 @@ function updateStageText() {
 }
 
 async function resetStage() {
-    stageStartTime = performance.now();
-    await reset();
-}
-
-function showMessage(msg) {
-    const div = document.createElement("div");
-    div.textContent = msg;
-    div.style.position = "fixed";
-    div.style.top = "20px";
-    div.style.left = "50%";
-    div.style.transform = "translateX(-50%)";
-    div.style.background = "white";
-    div.style.border = "2px solid black";
-    div.style.padding = "10px";
-    div.style.zIndex = 1000;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 1500);
-}
-
-async function checkTraining(theta) {
-    const stage = TRAINING_STAGES[stageIndex];
-    const thetaDeg = Math.abs(radToDeg(theta));
-
-    if (thetaDeg > stage.angle) {
-        alert(`You exceeded ±${stage.angle}°. Try again.`);
-        await resetStage();
-        return;
-    }
-
-    if (getCurrentTime() >= stage.duration) {
-        const next = stageIndex + 1;
-
-        if (next >= TRAINING_STAGES.length) {
-            trainingPassed = true;
-            localStorage.setItem("cartpoleUnlocked", "true");
-            alert("Training Complete! Challenge mode unlocked.");
-            window.location.href = "/static/cartpole.html";
-            return;
-        }
-
-        showMessage(`Stage ${next+1} unlocked! Now ±${TRAINING_STAGES[next].angle}°`);
-        stageIndex = next;
-        await resetStage();
-    }
-}
-
-async function reset() {
-    resetting = true;
-    waitingForInput = true;
-
     const res = await fetch(`${API_BASE}/reset`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ training: true })
     });
-
     const data = await res.json();
     frameImg.src = "data:image/png;base64," + data.frame;
-
-    resetting = false;
+    stageStartTime = performance.now();
 }
 
 async function step() {
-    if (trainingPassed || loopRunning || resetting) return;
-    loopRunning = true;
+    if (trainingPassed) return;
 
     const action = getAction();
-    const res = await fetch(`${API_BASE}/step/${action}`, { method:"POST" });
+    const res = await fetch(`${API_BASE}/step/${action}`, {
+        method:"POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({})
+    });
     const data = await res.json();
 
     frameImg.src = "data:image/png;base64," + data.frame;
@@ -216,26 +128,37 @@ async function step() {
     updateTimerDisplay();
     updateStageText();
 
-    if (data.done && !data.truncated) {
-        recordLap(getCurrentTime());
+    const stage = TRAINING_STAGES[stageIndex];
+    if(Math.abs(data.theta) * 180/Math.PI > stage.angle) {
+        alert(`Exceeded ±${stage.angle}°. Restarting stage.`);
         await resetStage();
+        return;
     }
 
-    await checkTraining(data.theta);
-
-    loopRunning = false;
-    if (!trainingPassed) setTimeout(step, 33);
+    if(getCurrentTime() >= stage.duration){
+        stageIndex++;
+        if(stageIndex >= TRAINING_STAGES.length){
+            trainingPassed = true;
+            localStorage.setItem("cartpoleUnlocked","true");
+            alert("Training complete! Challenge unlocked.");
+            window.location.href = "/static/cartpole.html";
+            return;
+        } else {
+            alert(`Stage ${stageIndex+1} unlocked!`);
+            await resetStage();
+        }
+    }
 }
 
+// simple overlay for safe angle
 function drawGauge(canvas, theta, cartX) {
     const ctx = canvas.getContext("2d");
     const w = canvas.width;
-
     ctx.clearRect(0,0,w,canvas.height);
 
     const worldWidth = 4.8;
     const pixelsPerMeter = w / worldWidth;
-    const cartPixelX = (w / 2) + cartX * pixelsPerMeter + 7;
+    const cartPixelX = (w/2) + cartX*pixelsPerMeter + 7;
 
     const pivotX = cartPixelX;
     const pivotY = 200;
@@ -243,28 +166,34 @@ function drawGauge(canvas, theta, cartX) {
     const safeAngle = TRAINING_STAGES[stageIndex].angle * Math.PI/180;
 
     ctx.beginPath();
-    ctx.arc(pivotX, pivotY, radius, Math.PI, 0, false);
+    ctx.arc(pivotX, pivotY, radius, Math.PI, 0);
     ctx.strokeStyle = "rgba(255,0,0,0.35)";
     ctx.lineWidth = 6;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(
-        pivotX, pivotY, radius,
-        -Math.PI/2 - safeAngle,
-        -Math.PI/2 + safeAngle,
-        false
-    );
+    ctx.arc(pivotX, pivotY, radius, -Math.PI/2 - safeAngle, -Math.PI/2 + safeAngle);
     ctx.strokeStyle = "rgba(0,255,0,0.5)";
     ctx.lineWidth = 6;
     ctx.stroke();
 }
 
-resetBtn.addEventListener("click", async () => {
-    await resetStage();
-    setTimeout(step, 33);
-});
-</script>
+// main game loop
+async function gameLoop() {
+    await step();
+    if(!trainingPassed) requestAnimationFrame(gameLoop);
+}
 
+// Start button
+document.getElementById("startTrainingBtn").addEventListener("click", async () => {
+    document.getElementById("instructionsModal").style.display = "none";
+    await resetStage();
+    requestAnimationFrame(gameLoop);
+});
+
+// Reset button
+resetBtn.addEventListener("click", resetStage);
+
+</script>
 </body>
 </html>

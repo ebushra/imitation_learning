@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<h2>Acrobot Human-Control</h2>
+<h2>Acrobot Human-Control (Gym Physics)</h2>
 <canvas id="acrobotCanvas" width="350" height="350"></canvas>
 <h3 id="timer">Time: 0.0 s</h3>
 
@@ -37,12 +37,7 @@ document.addEventListener('keyup', e => { if (e.key in keys) keys[e.key] = false
 // --- Timer ---
 let startTime = performance.now();
 
-// --- Acrobot state ---
-let theta1 = 0, theta2 = 0;      // angles
-let theta1Dot = 0, theta2Dot = 0; // angular velocities
-const dt = 0.02;                 // simulation timestep ~50Hz
-
-// --- Drawing function ---
+// --- Canvas drawing ---
 function drawAcrobot(theta1, theta2) {
   const w = canvas.width;
   const h = canvas.height;
@@ -87,58 +82,54 @@ function drawAcrobot(theta1, theta2) {
   ctx.setLineDash([]);
 }
 
-// --- Physics update (simplified) ---
-function physicsStep(action) {
-  // Torque mapping
-  let torque = 0;
-  if (keys.ArrowLeft) torque = -1;
-  if (keys.ArrowRight) torque = 1;
+// --- API ---
+const API_BASE = "/acrobot";
+let state = null;
+let resetting = false;
 
-  // Simple pendulum physics: just for demo/swinging effect
-  // Not a full Acrobot simulation — just enough to move angles realistically
-  const g = 9.8;
-  const l = 1.0;
-  theta1Dot += (-g/l * Math.sin(theta1) + torque*0.5) * dt;
-  theta2Dot += (-g/l * Math.sin(theta2) + torque*0.3) * dt;
+// Reset environment
+async function reset() {
+  resetting = true;
+  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
+  const data = await res.json();
+  state = data.state;
+  startTime = performance.now();
+  resetting = false;
+}
 
-  theta1 += theta1Dot * dt;
-  theta2 += theta2Dot * dt;
+// Step environment
+async function step() {
+  if (resetting || !state) return;
 
-  // damping
-  theta1Dot *= 0.99;
-  theta2Dot *= 0.99;
+  // Map human input to Gym actions
+  let action = 1; // default no torque
+  if (keys.ArrowLeft) action = 0;
+  if (keys.ArrowRight) action = 2;
+
+  const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
+  const data = await res.json();
+
+  state = data.state; // [x1, x2, theta1, theta2]
+  drawAcrobot(state[2], state[3]);
+
+  // Optional: detect success (tip above line)
+  const tipY = 50 + 100*Math.cos(state[2]) + 100*Math.cos(state[2]+state[3]);
+  if (tipY <= 97) console.log("Tip reached target!");
 }
 
 // --- Game loop ---
-function gameLoop() {
-  // Physics
-  physicsStep(getAction());
-
-  // Draw
-  drawAcrobot(theta1, theta2);
-
-  // Update timer
-  const t = (performance.now() - startTime)/1000;
-  timerEl.textContent = `Time: ${t.toFixed(1)} s`;
-
+async function gameLoop() {
+  await step();
+  timerEl.textContent = `Time: ${((performance.now()-startTime)/1000).toFixed(1)} s`;
   requestAnimationFrame(gameLoop);
 }
 
-// --- Get action (for API consistency, still human input) ---
-function getAction() {
-  if (keys.ArrowLeft) return 0;
-  if (keys.ArrowRight) return 2;
-  return 1;
-}
-
-// --- Reset ---
-resetBtn.addEventListener("click", ()=>{
-  theta1 = theta2 = theta1Dot = theta2Dot = 0;
-  startTime = performance.now();
-});
+// --- Restart button ---
+resetBtn.addEventListener("click", reset);
 
 // --- Start ---
-gameLoop();
+reset().then(() => requestAnimationFrame(gameLoop));
 </script>
+
 </body>
 </html>

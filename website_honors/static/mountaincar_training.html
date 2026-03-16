@@ -1,188 +1,160 @@
 <!DOCTYPE html>
-
 <html>
 <head>
-<title>Acrobot Training</title>
-<style>
-body{ text-align:center; font-family:sans-serif; margin-top:20px; }
-canvas{ border:2px solid black; }
-button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
-.instructions{ font-size:12px; max-width:420px; margin:10px auto; text-align:left; border:1px solid #aaa; padding:8px; }
-#stageInfo{ font-weight:bold; }
-</style>
+  <title>MountainCar Training</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; margin-top: 20px; }
+    canvas { border: 2px solid black; }
+    button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
+    .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; border:1px solid #aaa; padding:8px; }
+    #stageInfo { font-weight:bold; }
+  </style>
 </head>
-
 <body>
 
-<h2>Acrobot Training</h2>
+<h2>MountainCar Training</h2>
 
-<canvas id="canvas" width="220" height="220"></canvas>
+<canvas id="canvas" width="425" height="250"></canvas>
 
 <h3 id="timer">Time: 0.0 s</h3>
 <h3 id="stageInfo"></h3>
 
 <div class="instructions" id="instructionsBox">
-  <p><strong>Goal</strong><br>Reach the red line. Each stage moves the target higher.</p>
-  <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque.</p>
-  <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
+  <p><strong>Goal</strong><br>Reach the green line on the hill.</p>
+  <p><strong>Hint</strong><br>The car will swing naturally — watch the momentum!</p>
 </div>
 
-<button id="resetBtn">Restart Stage</button> <button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
+<button id="resetBtn">Restart Stage</button>
+<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const timerEl = document.getElementById("timer");
 const stageInfo = document.getElementById("stageInfo");
 
-const originY = 35;
-const L1 = 60;
-const L2 = 60;
+const API_BASE = "/mountaincar";
+const MIN_X = -1.2;
+const MAX_X = 0.6;
 
-const API_BASE = "/acrobot";
+let state = null;
+let stageStartTime = null;
+let resetting = false;
 
-let state=null;
-let stageStartTime=null;
-let resetting=false;
-
-const keys={ArrowLeft:false,ArrowRight:false};
-
-document.addEventListener("keydown",e=>{
- if(e.key in keys) keys[e.key]=true;
-});
-
-document.addEventListener("keyup",e=>{
- if(e.key in keys) keys[e.key]=false;
-});
-
-function getAction(){
- if(keys.ArrowLeft) return 0;
- if(keys.ArrowRight) return 2;
- return 1;
-}
-
-const STAGES=[
- {targetY:120,text:"Stage 1: Tip Over Line"},
- {targetY:80,text:"Stage 2: Tip Over Higher Line"}
+const STAGES = [
+  {goalX: -0.2, text: "Stage 1: Small hill"},
+  {goalX: 0.3, text: "Stage 2: Reach higher hill"}
 ];
 
-let stageIndex=0;
+let stageIndex = 0;
 
-function drawAcrobot(theta1,theta2){
+function worldToPixel(x) {
+  return ((x - MIN_X) / (MAX_X - MIN_X)) * canvas.width;
+}
 
- const w=canvas.width;
- ctx.clearRect(0,0,w,w);
+// Draw the hill
+function drawMountain() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath();
+  for(let i=0;i<canvas.width;i++){
+    const x = MIN_X + (i/canvas.width)*(MAX_X-MIN_X);
+    const y = 0.45*Math.sin(3*x)+0.55;
+    const py = canvas.height*(1-y);
+    if(i===0) ctx.moveTo(i,py);
+    else ctx.lineTo(i,py);
+  }
+  ctx.strokeStyle="black";
+  ctx.lineWidth=2;
+  ctx.stroke();
+}
 
- const originX=w/2;
+// Draw the car
+function drawCar(position){
+  const xPixel = worldToPixel(position);
+  const yWorld = 0.45*Math.sin(3*position)+0.55;
+  const yPixel = canvas.height*(1-yWorld);
 
- const x1=originX+L1*Math.sin(theta1);
- const y1=originY+L1*Math.cos(theta1);
+  ctx.fillStyle = "red";
+  ctx.fillRect(xPixel-10, yPixel-5, 20,10);
 
- const x2=x1+L2*Math.sin(theta1+theta2);
- const y2=y1+L2*Math.cos(theta1+theta2);
+  ctx.fillStyle="black";
+  ctx.beginPath();
+  ctx.arc(xPixel-6,yPixel+5,3,0,Math.PI*2);
+  ctx.arc(xPixel+6,yPixel+5,3,0,Math.PI*2);
+  ctx.fill();
+}
 
- ctx.beginPath();
- ctx.moveTo(originX,originY);
- ctx.lineTo(x1,y1);
- ctx.lineTo(x2,y2);
- ctx.strokeStyle="black";
- ctx.lineWidth=2;
- ctx.stroke();
-
- ctx.fillStyle="black";
- [[originX,originY],[x1,y1],[x2,y2]].forEach(([x,y])=>{
-   ctx.beginPath();
-   ctx.arc(x,y,3,0,Math.PI*2);
-   ctx.fill();
- });
-
- const targetY=STAGES[stageIndex].targetY;
-
- ctx.beginPath();
- ctx.setLineDash([5,5]);
- ctx.strokeStyle="red";
- ctx.moveTo(0,targetY);
- ctx.lineTo(w,targetY);
- ctx.stroke();
- ctx.setLineDash([]);
-
- return {y2};
+// Draw the goal line
+function drawGoal(){
+  const goalPixel = worldToPixel(STAGES[stageIndex].goalX);
+  ctx.beginPath();
+  ctx.setLineDash([8,6]);
+  ctx.moveTo(goalPixel,0);
+  ctx.lineTo(goalPixel,canvas.height);
+  ctx.strokeStyle="green";
+  ctx.lineWidth=3;
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function updateUI(){
- timerEl.textContent=
-  "Time: "+((performance.now()-stageStartTime)/1000).toFixed(1)+" s";
-
- stageInfo.textContent=STAGES[stageIndex].text;
+  timerEl.textContent = "Time: "+((performance.now()-stageStartTime)/1000).toFixed(1)+" s";
+  stageInfo.textContent = STAGES[stageIndex].text;
 }
 
 async function resetStage(){
-
- resetting=true;
-
- const res=await fetch(`${API_BASE}/reset`,{method:"POST"});
- const data=await res.json();
-
- state=data.state;
-
- stageStartTime=performance.now();
-
- resetting=false;
+  resetting = true;
+  const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
+  const data = await res.json();
+  state = data.state;  // state[0] = position, state[1] = velocity
+  stageStartTime = performance.now();
+  resetting = false;
+  drawMountain();
+  drawGoal();
+  drawCar(state[0]);
 }
 
-function checkTraining(tipY){
-
- if(tipY<=STAGES[stageIndex].targetY){
-
-   stageIndex++;
-
-   if(stageIndex>=STAGES.length){
-
-     localStorage.setItem("acrobot_training_complete","1");
-
-     alert("Training complete! Real Acrobot unlocked.");
-
-     window.location.href="/static/acrobot.html";
-
-   }else{
-
-     alert("Good! Next stage — line moved higher.");
-
-     resetStage();
-
-   }
-
- }
+function checkTraining(position){
+  if(position >= STAGES[stageIndex].goalX){
+    stageIndex++;
+    if(stageIndex >= STAGES.length){
+      localStorage.setItem("mountaincar_training_complete","1");
+      alert("Training complete! Full MountainCar unlocked.");
+      window.location.href="/static/mountaincar.html";
+    } else {
+      alert(`Good! Next stage — goal at x ≥ ${STAGES[stageIndex].goalX}`);
+      resetStage();
+    }
+  }
 }
 
 async function step(){
+  if(resetting || !state) return;
+  // ignore human input for now
+  const action = 1;  // always push forward
 
- if(resetting||!state) return;
+  const res = await fetch(`${API_BASE}/step`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({action:action})
+  });
+  const data = await res.json();
+  state = data.state;
 
- const action=getAction();
-
- const res=await fetch(`${API_BASE}/step/${action}`,{method:"POST"});
- const data=await res.json();
-
- state=data.state;
-
- const {y2}=drawAcrobot(state[0],state[1]);
-
- updateUI();
-
- checkTraining(y2);
+  drawMountain();
+  drawGoal();
+  drawCar(state[0]);
+  updateUI();
+  checkTraining(state[0]);
 }
 
 async function gameLoop(){
-
- await step();
-
- requestAnimationFrame(gameLoop);
+  await step();
+  requestAnimationFrame(gameLoop);
 }
 
-document.getElementById("resetBtn").addEventListener("click",resetStage);
+document.getElementById("resetBtn").addEventListener("click", resetStage);
 
 resetStage().then(()=>requestAnimationFrame(gameLoop));
 

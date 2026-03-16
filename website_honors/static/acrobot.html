@@ -16,8 +16,9 @@
 <h3 id="timer">Time: 0.0 s</h3>
 
 <div class="instructions" id="instructionsBox">
-  <p><strong>Goal:</strong> Reach the red line. Pump the swing using arrow keys.</p>
-  <p><strong>Controls:</strong> Left/Right Arrow keys apply torque.</p>
+  <p><strong>Goal</strong><br>Reach the red line. Each stage moves the target higher.</p>
+  <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque.</p>
+  <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
 </div>
 
 <button id="resetBtn">Restart</button>
@@ -29,29 +30,54 @@ const ctx = canvas.getContext("2d");
 const timerEl = document.getElementById("timer");
 const resetBtn = document.getElementById("resetBtn");
 
+const originY = 50;
+const L1 = 100;
+const L2 = 100;
+const targetY = 97;
+
 // --- Human input ---
 const keys = { ArrowLeft: false, ArrowRight: false };
-document.addEventListener('keydown', e => { if (e.key in keys) keys[e.key] = true; });
-document.addEventListener('keyup', e => { if (e.key in keys) keys[e.key] = false; });
 
-// --- Timer ---
+document.addEventListener('keydown', e => {
+  if (e.key in keys) keys[e.key] = true;
+});
+
+document.addEventListener('keyup', e => {
+  if (e.key in keys) keys[e.key] = false;
+});
+
+// --- Timer & laps ---
 let startTime = performance.now();
+let laps = [];
+
+const lapDiv = document.createElement("div");
+lapDiv.style.fontSize = "14px";
+lapDiv.style.marginTop = "10px";
+document.body.appendChild(lapDiv);
+
+function recordLap(time){
+  laps.push(time);
+
+  lapDiv.innerHTML = laps
+    .map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`)
+    .join("<br>");
+}
 
 // --- Canvas drawing ---
 function drawAcrobot(theta1, theta2) {
+
   const w = canvas.width;
   const h = canvas.height;
+
   ctx.clearRect(0,0,w,h);
 
   const originX = w/2;
-  const originY = 50;
-  const l1 = 100;
-  const l2 = 100;
 
-  const x1 = originX + l1 * Math.sin(theta1);
-  const y1 = originY + l1 * Math.cos(theta1);
-  const x2 = x1 + l2 * Math.sin(theta1 + theta2);
-  const y2 = y1 + l2 * Math.cos(theta1 + theta2);
+  const x1 = originX + L1 * Math.sin(theta1);
+  const y1 = originY + L1 * Math.cos(theta1);
+
+  const x2 = x1 + L2 * Math.sin(theta1 + theta2);
+  const y2 = y1 + L2 * Math.cos(theta1 + theta2);
 
   // Links
   ctx.beginPath();
@@ -64,7 +90,7 @@ function drawAcrobot(theta1, theta2) {
 
   // Joints
   ctx.fillStyle = "black";
-  [[originX, originY],[x1, y1],[x2, y2]].forEach(([x,y])=>{
+  [[originX,originY],[x1,y1],[x2,y2]].forEach(([x,y])=>{
     ctx.beginPath();
     ctx.arc(x,y,5,0,Math.PI*2);
     ctx.fill();
@@ -75,60 +101,77 @@ function drawAcrobot(theta1, theta2) {
   ctx.setLineDash([8,8]);
   ctx.strokeStyle = "red";
   ctx.lineWidth = 3;
-  const targetY = 97;
-  ctx.moveTo(0, targetY);
-  ctx.lineTo(w, targetY);
+  ctx.moveTo(0,targetY);
+  ctx.lineTo(w,targetY);
   ctx.stroke();
   ctx.setLineDash([]);
+
+  return {x2,y2}; // return tip position
 }
 
 // --- API ---
 const API_BASE = "/acrobot";
+
 let state = null;
 let resetting = false;
 
 // Reset environment
-async function reset() {
+async function reset(){
   resetting = true;
-  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
+
+  const res = await fetch(`${API_BASE}/reset`,{method:"POST"});
   const data = await res.json();
+
   state = data.state;
   startTime = performance.now();
+
   resetting = false;
 }
 
 // Step environment
-async function step() {
-  if (resetting || !state) return;
+async function step(){
 
-  // Map human input to Gym actions
-  let action = 1; // default no torque
-  if (keys.ArrowLeft) action = 0;
-  if (keys.ArrowRight) action = 2;
+  if(resetting || !state) return;
 
-  const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
+  let action = 1;
+
+  if(keys.ArrowLeft) action = 0;
+  if(keys.ArrowRight) action = 2;
+
+  const res = await fetch(`${API_BASE}/step/${action}`,{method:"POST"});
   const data = await res.json();
 
-  state = data.state; // [x1, x2, theta1, theta2]
-  drawAcrobot(state[0], state[1]);
+  state = data.state;
 
-  // Optional: detect success (tip above line)
-  const tipY = 50 + 100*Math.cos(state[2]) + 100*Math.cos(state[2]+state[3]);
-  if (tipY <= 97) console.log("Tip reached target!");
+  const {x2,y2} = drawAcrobot(state[0],state[1]);
+
+  // ---- Win detection ----
+  if(y2 <= targetY){
+
+    const lapTime = (performance.now()-startTime)/1000;
+
+    recordLap(lapTime);
+
+    await reset();
+  }
 }
 
 // --- Game loop ---
-async function gameLoop() {
+async function gameLoop(){
+
   await step();
-  timerEl.textContent = `Time: ${((performance.now()-startTime)/1000).toFixed(1)} s`;
+
+  timerEl.textContent =
+    `Time: ${((performance.now()-startTime)/1000).toFixed(1)} s`;
+
   requestAnimationFrame(gameLoop);
 }
 
-// --- Restart button ---
-resetBtn.addEventListener("click", reset);
+// Restart button
+resetBtn.addEventListener("click",reset);
 
-// --- Start ---
-reset().then(() => requestAnimationFrame(gameLoop));
+// Start
+reset().then(()=>requestAnimationFrame(gameLoop));
 </script>
 
 </body>

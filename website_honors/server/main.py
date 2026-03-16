@@ -99,32 +99,27 @@ def serve_static(filename):
 # =====================
 # API endpoints
 # =====================
+# Flask /acrobot/reset
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
     acrobot.reset()
     acrobot_rec.new_episode()
-    obs = acrobot.get_state()  # x1, x2, theta1, theta2
+    x1, x2, theta1, theta2 = acrobot.get_state()  # make sure get_state() returns these
     return jsonify({
-        "state": obs,
+        "state": [x1, x2, theta1, theta2],
         "success": False
     })
 
-
+# Flask /acrobot/step/<action>
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
     obs, reward, done = acrobot.step(action)
-    acrobot_rec.log(
-        state=obs,
-        action=action,
-        reward=reward,
-        done=done,
-        success=done
-    )
+    acrobot_rec.log(state=obs, action=action, reward=reward, done=done, success=done)
+    x1, x2, theta1, theta2 = obs
     return jsonify({
-        "state": obs,
+        "state": [x1, x2, theta1, theta2],
         "success": bool(done)
     })
-
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():
     global mountaincar

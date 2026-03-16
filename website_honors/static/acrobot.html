@@ -27,7 +27,11 @@
 <button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
-
+// --- Training gate ---
+if(!localStorage.getItem("acrobot_training_complete")){
+  window.location.href = "/static/acrobot_training.html";
+}
+  
 const canvas = document.getElementById("acrobotCanvas");
 const ctx = canvas.getContext("2d");
 const timerEl = document.getElementById("timer");

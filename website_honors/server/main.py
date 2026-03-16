@@ -143,10 +143,8 @@ def reset_mountaincar():
     obs = mountaincar.reset(training_mode=training, goal_x=goal)
     mountaincar_rec.new_episode()
 
-    position = float(obs[0])
-
     return jsonify({
-        "position": position,
+        "state": obs.tolist(),
         "laps": mountaincar.lap_times
     })
 
@@ -155,7 +153,6 @@ def step_mountaincar():
     data = request.json or {}
     action = int(data.get("action", 0))
 
-    
     obs, reward, done, success = mountaincar.step(action)
 
     mountaincar_rec.log(
@@ -166,13 +163,11 @@ def step_mountaincar():
         success=success
     )
 
-    position = float(obs[0])
     return jsonify({
+        "state": obs.tolist(),
         "done": done,
         "success": success,
-        "laps": mountaincar.lap_times,
-        "frame": frame_b64,
-        "position": position
+        "laps": mountaincar.lap_times
     })
 
 from fastapi.responses import JSONResponse

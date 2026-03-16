@@ -123,7 +123,7 @@ async function step(){
 async function gameLoop(){
   if(!running) return;
   await step();
-  setTimeout(gameLoop, 50); // ~20 FPS for simplicity
+  setTimeout(gameLoop, 33); // ~20 FPS for simplicity
 }
 
 async function startSession(){

@@ -110,7 +110,7 @@ async function step() {
   const data = await res.json();
 
   state = data.state; // [x1, x2, theta1, theta2]
-  drawAcrobot(state[2], state[3]);
+  drawAcrobot(state[0], state[1]);
 
   // Optional: detect success (tip above line)
   const tipY = 50 + 100*Math.cos(state[2]) + 100*Math.cos(state[2]+state[3]);

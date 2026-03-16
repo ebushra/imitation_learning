@@ -29,5 +29,26 @@
 <button onclick="location.href='/static/cartpole.html'">CartPole</button>
 <button onclick="location.href='/static/mountaincar.html'">MountainCar</button>
 
+<script>
+
+function openAcrobot(){
+
+  const trained = localStorage.getItem("acrobot_training_complete");
+
+  if(!trained){
+
+    alert("You must complete Acrobot training first!");
+
+    window.location.href="/static/acrobot_training.html";
+
+  }else{
+
+    window.location.href="/static/acrobot.html";
+
+  }
+
+}
+
+</script>
 </body>
 </html>

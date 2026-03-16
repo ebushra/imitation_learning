@@ -142,7 +142,7 @@ async function step(action) {
 
   const data = await res.json();
 
- frameImg.src = "data:image/png;base64," + data.frame;
+  frameImg.src = "data:image/png;base64," + data.frame;
 
   // update lap times
   updateLaps(data.laps);

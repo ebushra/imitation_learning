@@ -101,61 +101,29 @@ def serve_static(filename):
 # =====================
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
-    # Reset environment
     acrobot.reset()
     acrobot_rec.new_episode()
-    
-    # Render safely
-    try:
-        frame = acrobot.render(mode="rgb_array")  # headless mode
-    except Exception as e:
-        print("Render failed on reset:", e)
-        import numpy as np
-        frame = np.zeros((350, 350, 3), dtype=np.uint8)  # fallback black frame
-
+    obs = acrobot.get_state()  # x1, x2, theta1, theta2
     return jsonify({
-        "frame": frame_to_base64(frame),
+        "state": obs,
         "success": False
     })
 
+
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
-    try:
-        # Step the environment a few times for smoother motion
-       
-        obs, reward, done = acrobot.step(action)
-
-        # Render (no mode argument, use whatever your wrapper provides)
-        try:
-            frame = acrobot.render()  # just call without mode
-        except Exception as e:
-            print("Render failed on step:", e)
-            import numpy as np
-            frame = np.zeros((350, 350, 3), dtype=np.uint8)  # fallback black frame
-
-        # Convert tip_y to float to be JSON serializable
-        x_tip, y_tip = acrobot.get_tip_position()
-        y_tip = float(y_tip)
-
-        # Log the step
-        acrobot_rec.log(
-            state=obs,
-            action=action,
-            reward=reward,
-            done=done,
-            success=done
-        )
-
-        return jsonify({
-            "frame": frame_to_base64(frame),
-            "success": bool(done),
-            "tip_y": y_tip
-        })
-    except Exception as e:
-        # safer error reporting
-        tb = traceback.format_exc()
-        print("Error in step_acrobot:", tb)
-        return jsonify({"error": str(e), "trace": tb}), 500
+    obs, reward, done = acrobot.step(action)
+    acrobot_rec.log(
+        state=obs,
+        action=action,
+        reward=reward,
+        done=done,
+        success=done
+    )
+    return jsonify({
+        "state": obs,
+        "success": bool(done)
+    })
 
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():

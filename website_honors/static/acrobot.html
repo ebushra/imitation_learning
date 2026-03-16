@@ -73,6 +73,61 @@ const keys = { ArrowLeft: false, ArrowRight: false };
 let startTime = null;
 let laps = [];
 
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+
+function drawAcrobot(state) {
+  const [theta1, theta2, thetaDot1, thetaDot2] = state;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const originX = w / 2;
+  const originY = h / 4;
+
+  const l1 = 100; // length of first link
+  const l2 = 100; // length of second link
+
+  // compute positions
+  const x1 = originX + l1 * Math.sin(theta1);
+  const y1 = originY + l1 * Math.cos(theta1);
+
+  const x2 = x1 + l2 * Math.sin(theta1 + theta2);
+  const y2 = y1 + l2 * Math.cos(theta1 + theta2);
+
+  // draw first link
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(x1, y1);
+  ctx.strokeStyle = "blue";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // draw second link
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = "green";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // draw joints
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(originX, originY, 6, 0, 2*Math.PI);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x1, y1, 6, 0, 2*Math.PI);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x2, y2, 6, 0, 2*Math.PI);
+  ctx.fill();
+}
+
 // Track keys pressed
 document.addEventListener("keydown", e => { if (e.key in keys) keys[e.key] = true; });
 document.addEventListener("keyup", e => { if (e.key in keys) keys[e.key] = false; });
@@ -97,7 +152,7 @@ function recordLap(time) {
 async function reset() {
   const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+  drawAcrobot(data.state);
   startTimer();
 }
 
@@ -106,17 +161,15 @@ async function step() {
   const action = getAction();
   const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+
+  drawAcrobot(data.state); // draw on canvas
   updateTimerDisplay();
 
-  // Record lap if success
   if (data.success) {
     const lapTime = getCurrentTime();
     recordLap(lapTime);
     await reset();  // start new round
   }
-  drawTargetLine();
-
 }
 
 // Main loop

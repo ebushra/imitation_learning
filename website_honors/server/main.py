@@ -140,11 +140,13 @@ def reset_mountaincar():
     training = data.get("training", False)
     goal = data.get("goalX", 0.5)
 
-    mountaincar.reset(training_mode=training, goal_x=goal)
+    obs = mountaincar.reset(training_mode=training, goal_x=goal)
     mountaincar_rec.new_episode()
 
+    position = float(obs[0])
+
     return jsonify({
-        "frame": frame_to_base64(mountaincar.render()),
+        "position": position,
         "laps": mountaincar.lap_times
     })
 
@@ -163,9 +165,6 @@ def step_mountaincar():
         done=done,
         success=success
     )
-
-    frame = mountaincar.render()
-    frame_b64 = frame_to_base64(frame)
 
     position = float(obs[0])
     return jsonify({

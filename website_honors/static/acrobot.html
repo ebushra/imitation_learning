@@ -11,8 +11,8 @@
 </head>
 <body>
 
-<h2>Acrobot Human-Control (Gym Physics)</h2>
-<canvas id="acrobotCanvas" width="350" height="350"></canvas>
+<h2>Acrobot</h2>
+<canvas id="acrobotCanvas" width="300" height="300"></canvas>
 <h3 id="timer">Time: 0.0 s</h3>
 
 <div class="instructions" id="instructionsBox">
@@ -119,7 +119,12 @@ let resetting = false;
 async function reset(){
   resetting = true;
 
-  const res = await fetch(`${API_BASE}/reset`,{method:"POST"});
+  const STEPS_PER_CALL = 5;
+  const res = await fetch(`${API_BASE}/step_batch`, {
+    method: "POST",
+    body: JSON.stringify({action, steps: STEPS_PER_CALL}),
+    headers: {"Content-Type": "application/json"}
+  });
   const data = await res.json();
 
   state = data.state;

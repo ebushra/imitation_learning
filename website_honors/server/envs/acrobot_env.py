@@ -35,9 +35,8 @@ class WebAcrobot:
         self.env.close()
 
     def get_state(self):
-        # return a tuple or list of floats
-        # [theta1, theta2, thetaDot1, thetaDot2]
-        return [self.theta1, self.theta2, self.thetaDot1, self.thetaDot2]
+        theta1, theta2, thetaDot1, thetaDot2 = self.state
+        return [theta1, theta2, thetaDot1, thetaDot2]
 
     def get_tip_position(self):
         """

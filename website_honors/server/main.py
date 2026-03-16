@@ -174,8 +174,8 @@ def step_mountaincar():
         "laps": mountaincar.lap_times,
         "frame": frame_b64,
         "position": position
-    })})
-
+    })
+    
 from fastapi.responses import JSONResponse
 from .utils.render import render_frame  # make sure you have this utility
 

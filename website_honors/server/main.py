@@ -104,12 +104,13 @@ def serve_static(filename):
 def reset_acrobot():
     acrobot.reset()
     acrobot_rec.new_episode()
-    x1, x2, theta1, theta2 = acrobot.get_state()  # make sure get_state() returns these
+    obs = acrobot.get_state()
+
     return jsonify({
-        "state": [x1, x2, theta1, theta2],
+        "state": obs,
         "success": False
     })
-
+    
 # Flask /acrobot/step/<action>
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):

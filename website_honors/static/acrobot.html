@@ -29,6 +29,7 @@
 <script>
 // --- Training gate ---
 if(!localStorage.getItem("acrobot_training_complete")){
+  alert("You must complete Acrobot training first!");
   window.location.href = "/static/acrobot_training.html";
 }
   

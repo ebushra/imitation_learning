@@ -8,7 +8,7 @@
       font-family: sans-serif;
       margin-top: 20px;
     }
-    img {
+    canvas {
       border: 2px solid black;
     }
     button {
@@ -28,14 +28,7 @@
 <body>
 
 <h2>Acrobot</h2>
-<div style="position:relative; display:inline-block;">
-  <img id="frame" width="350" />
-  <canvas id="overlay" width="350" height="350"
-          style="position:absolute; top:0; left:0; pointer-events:none;">
-  </canvas>
-</div>
-
-<br>
+<canvas id="acrobotCanvas" width="350" height="350"></canvas>
 
 <h3 id="timer">Time: 0.0 s</h3>
 <div id="laps" style="font-size:14px; margin-top:8px;"></div>
@@ -51,95 +44,26 @@
 
 <script>
 if (localStorage.getItem("acrobot_training_complete") !== "1") {
-
-  // Stop page from loading the game
-  document.body.style.display = "none";
-
-  // Show popup
   alert("You must complete Acrobot Training before playing this mode!");
-
-  // Send them to training
   window.location.replace("/static/acrobot_training.html");
 }
 
-
-const frameImg = document.getElementById("frame");
+// Canvas & UI
+const canvas = document.getElementById("acrobotCanvas");
+const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");
 const lapsDiv = document.getElementById("laps");
 const timerEl = document.getElementById("timer");
 
-const API_BASE = "/acrobot";
+// Controls
 const keys = { ArrowLeft: false, ArrowRight: false };
-let startTime = null;
-let laps = [];
-
-const canvas = document.getElementById("overlay");
-const ctx = canvas.getContext("2d");
-
-function drawAcrobot(state) {
-  const [theta1, theta2, thetaDot1, thetaDot2] = state;
-
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  const originX = w / 2;
-  const originY = h / 4;
-
-  const l1 = 100; // length of first link
-  const l2 = 100; // length of second link
-
-  // compute positions
-  const x1 = originX + l1 * Math.sin(theta1);
-  const y1 = originY + l1 * Math.cos(theta1);
-
-  const x2 = x1 + l2 * Math.sin(theta1 + theta2);
-  const y2 = y1 + l2 * Math.cos(theta1 + theta2);
-
-  // draw first link
-  ctx.beginPath();
-  ctx.moveTo(originX, originY);
-  ctx.lineTo(x1, y1);
-  ctx.strokeStyle = "blue";
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // draw second link
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.strokeStyle = "green";
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  // draw joints
-  ctx.fillStyle = "black";
-  ctx.beginPath();
-  ctx.arc(originX, originY, 6, 0, 2*Math.PI);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(x1, y1, 6, 0, 2*Math.PI);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(x2, y2, 6, 0, 2*Math.PI);
-  ctx.fill();
-}
-
-// Track keys pressed
 document.addEventListener("keydown", e => { if (e.key in keys) keys[e.key] = true; });
 document.addEventListener("keyup", e => { if (e.key in keys) keys[e.key] = false; });
 
-// Get human action
-function getAction() {
-  if (keys.ArrowLeft) return 0;
-  if (keys.ArrowRight) return 2;
-  return 1;
-}
+// Timer
+let startTime = null;
+let laps = [];
 
-// Timer helpers
 function startTimer() { startTime = performance.now(); }
 function getCurrentTime() { return startTime ? (performance.now() - startTime)/1000 : 0; }
 function updateTimerDisplay() { timerEl.textContent = `Time: ${getCurrentTime().toFixed(1)} s`; }
@@ -148,67 +72,102 @@ function recordLap(time) {
   lapsDiv.innerHTML = laps.map((t,i) => `Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
 }
 
-// Reset the game
-async function reset() {
-  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
-  const data = await res.json();
-  drawAcrobot(data.state);
-  startTimer();
+// Action mapping
+function getAction() {
+  if (keys.ArrowLeft) return 0;   // left torque
+  if (keys.ArrowRight) return 2;  // right torque
+  return 1; // no-op
 }
 
-// Step the game
+// Draw Acrobot
+function drawAcrobot(theta1, theta2) {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const originX = w/2;
+  const originY = 50;
+  const l1 = 100;
+  const l2 = 100;
+
+  const x1 = originX + l1 * Math.sin(theta1);
+  const y1 = originY + l1 * Math.cos(theta1);
+
+  const x2 = x1 + l2 * Math.sin(theta2 + theta1);
+  const y2 = y1 + l2 * Math.cos(theta2 + theta1);
+
+  // Links
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Joints
+  ctx.fillStyle = "black";
+  [ [originX, originY], [x1, y1], [x2, y2] ].forEach(([x,y])=>{
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Target line
+  ctx.beginPath();
+  ctx.setLineDash([8,8]);
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 3;
+  const targetY = 97; // adjust if needed
+  ctx.moveTo(0, targetY);
+  ctx.lineTo(w, targetY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// --- API calls ---
+const API_BASE = "/acrobot";
+let resetting = false;
+
+async function reset() {
+  resetting = true;
+  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
+  const data = await res.json();
+  startTimer();
+  resetting = false;
+  return data;
+}
+
 async function step() {
+  if (resetting) return;
+
   const action = getAction();
   const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
   const data = await res.json();
 
-  drawAcrobot(data.state); // draw on canvas
+  // Draw Acrobot using numeric state
+  drawAcrobot(data.state[0], data.state[2]);
+
   updateTimerDisplay();
 
+  // Record lap if success
   if (data.success) {
     const lapTime = getCurrentTime();
     recordLap(lapTime);
-    await reset();  // start new round
+    await reset();
   }
 }
 
-// Main loop
+// Game loop
 async function gameLoop() {
   await step();
-  setTimeout(gameLoop, 10);
+  requestAnimationFrame(gameLoop);
 }
 
-const overlay = document.getElementById("overlay");
-
-function drawTargetLine() {
-  const ctx = overlay.getContext("2d");
-  const w = overlay.width;
-  const h = overlay.height;
-
-  ctx.clearRect(0,0,w,h);
-
-  // height of success line (tweak this once)
-  const targetY = 97;
-
-  ctx.beginPath();
-
-  ctx.setLineDash([8,8]);   // dashed pattern
-  ctx.strokeStyle = "red";
-  ctx.lineWidth = 3;
-
-  ctx.moveTo(0, targetY);
-  ctx.lineTo(w, targetY);
-
-  ctx.stroke();
-
-  ctx.setLineDash([]);
-}
-
-// Reset laps when leaving page
-window.addEventListener("beforeunload", () => { laps = []; });
-
-reset().then(gameLoop);
+// Initialize
+reset().then(() => requestAnimationFrame(gameLoop));
 resetBtn.addEventListener("click", reset);
+
 </script>
 
 </body>

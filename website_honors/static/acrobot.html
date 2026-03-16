@@ -1,40 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Acrobot Human-Control</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; margin-top: 20px; }
+    canvas { border: 2px solid black; }
+    button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
+    .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; }
+  </style>
+</head>
+<body>
+
+<h2>Acrobot Human-Control</h2>
+<canvas id="acrobotCanvas" width="350" height="350"></canvas>
+<h3 id="timer">Time: 0.0 s</h3>
+
+<div class="instructions" id="instructionsBox">
+  <p><strong>Goal:</strong> Reach the red line. Pump the swing using arrow keys.</p>
+  <p><strong>Controls:</strong> Left/Right Arrow keys apply torque.</p>
+</div>
+
+<button id="resetBtn">Restart</button>
+<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
+
 <script>
-// --- Canvas & UI elements ---
 const canvas = document.getElementById("acrobotCanvas");
 const ctx = canvas.getContext("2d");
-const resetBtn = document.getElementById("resetBtn");
-const lapsDiv = document.getElementById("laps");
 const timerEl = document.getElementById("timer");
+const resetBtn = document.getElementById("resetBtn");
 
-// --- Controls ---
+// --- Human input ---
 const keys = { ArrowLeft: false, ArrowRight: false };
 document.addEventListener('keydown', e => { if (e.key in keys) keys[e.key] = true; });
 document.addEventListener('keyup', e => { if (e.key in keys) keys[e.key] = false; });
 
 // --- Timer ---
-let startTime = null;
-let laps = [];
+let startTime = performance.now();
 
-function startTimer() { startTime = performance.now(); }
-function getCurrentTime() { return startTime ? (performance.now() - startTime)/1000 : 0; }
-function updateTimerDisplay() { timerEl.textContent = `Time: ${getCurrentTime().toFixed(1)} s`; }
-function recordLap(time) {
-  laps.push(time);
-  lapsDiv.innerHTML = laps.map((t,i) => `Round ${i+1}: ${t.toFixed(1)} s`).join("<br>");
-}
+// --- Acrobot state ---
+let theta1 = 0, theta2 = 0;      // angles
+let theta1Dot = 0, theta2Dot = 0; // angular velocities
+const dt = 0.02;                 // simulation timestep ~50Hz
 
-// --- Action mapping ---
-function getAction() {
-  if (keys.ArrowLeft) return 0;   // left torque
-  if (keys.ArrowRight) return 2;  // right torque
-  return 1; // no-op
-}
-
-// --- Draw Acrobot ---
+// --- Drawing function ---
 function drawAcrobot(theta1, theta2) {
   const w = canvas.width;
   const h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0,0,w,h);
 
   const originX = w/2;
   const originY = 50;
@@ -57,9 +69,9 @@ function drawAcrobot(theta1, theta2) {
 
   // Joints
   ctx.fillStyle = "black";
-  [ [originX, originY], [x1, y1], [x2, y2] ].forEach(([x,y]) => {
+  [[originX, originY],[x1, y1],[x2, y2]].forEach(([x,y])=>{
     ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.arc(x,y,5,0,Math.PI*2);
     ctx.fill();
   });
 
@@ -75,52 +87,58 @@ function drawAcrobot(theta1, theta2) {
   ctx.setLineDash([]);
 }
 
-// --- API ---
-const API_BASE = "/acrobot";
-let resetting = false;
+// --- Physics update (simplified) ---
+function physicsStep(action) {
+  // Torque mapping
+  let torque = 0;
+  if (keys.ArrowLeft) torque = -1;
+  if (keys.ArrowRight) torque = 1;
 
-async function reset() {
-  resetting = true;
-  const res = await fetch(`${API_BASE}/reset`, { method: "POST" });
-  const data = await res.json();
-  startTimer();
-  resetting = false;
-  return data;
-}
+  // Simple pendulum physics: just for demo/swinging effect
+  // Not a full Acrobot simulation — just enough to move angles realistically
+  const g = 9.8;
+  const l = 1.0;
+  theta1Dot += (-g/l * Math.sin(theta1) + torque*0.5) * dt;
+  theta2Dot += (-g/l * Math.sin(theta2) + torque*0.3) * dt;
 
-async function step() {
-  if (resetting) return;
+  theta1 += theta1Dot * dt;
+  theta2 += theta2Dot * dt;
 
-  const action = getAction();
-  const res = await fetch(`${API_BASE}/step/${action}`, { method: "POST" });
-  const data = await res.json();
-
-  drawAcrobot(data.state[0], data.state[2]);
-  updateTimerDisplay();
-
-  // Record lap if success
-  if (data.success) {
-    const lapTime = getCurrentTime();
-    recordLap(lapTime);
-    await reset();
-  }
+  // damping
+  theta1Dot *= 0.99;
+  theta2Dot *= 0.99;
 }
 
 // --- Game loop ---
-async function gameLoop() {
-  await step();
+function gameLoop() {
+  // Physics
+  physicsStep(getAction());
+
+  // Draw
+  drawAcrobot(theta1, theta2);
+
+  // Update timer
+  const t = (performance.now() - startTime)/1000;
+  timerEl.textContent = `Time: ${t.toFixed(1)} s`;
+
   requestAnimationFrame(gameLoop);
 }
 
-// --- Back button ---
-const backBtn = document.createElement("button");
-backBtn.textContent = "⬅ Back to Menu";
-backBtn.style.margin = "8px";
-backBtn.onclick = () => window.location.href = "/index.html";
-document.body.insertBefore(backBtn, document.body.firstChild);
+// --- Get action (for API consistency, still human input) ---
+function getAction() {
+  if (keys.ArrowLeft) return 0;
+  if (keys.ArrowRight) return 2;
+  return 1;
+}
 
-// --- Initialize ---
-reset().then(() => requestAnimationFrame(gameLoop));
-resetBtn.addEventListener("click", reset);
+// --- Reset ---
+resetBtn.addEventListener("click", ()=>{
+  theta1 = theta2 = theta1Dot = theta2Dot = 0;
+  startTime = performance.now();
+});
 
+// --- Start ---
+gameLoop();
 </script>
+</body>
+</html>

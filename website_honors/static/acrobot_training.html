@@ -1,156 +1,190 @@
 <!DOCTYPE html>
+
 <html>
 <head>
-  <title>Acrobot Training</title>
-  <style>
-    body { text-align:center; font-family:sans-serif; margin-top:20px; }
-    .game-container{ display:inline-block; border:2px solid black; padding:8px; position:relative; }
-    img,canvas{ display:block; }
-    button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
-    #timer{ margin-top:8px; font-size:16px; }
-    #stageInfo{ font-size:16px; margin-top:8px; font-weight:bold; }
-    .instructions{ font-size:12px; max-width:420px; margin:10px auto; text-align:left; border:1px solid #aaa; padding:8px; }
-    #instructionsModal{
-      position:fixed; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;
-    }
-    #instructionsModalContent{
-      background:white; padding:20px; border-radius:6px; max-width:400px; text-align:left;
-    }
-    #instructionsModal button{ display:block; margin:10px auto 0 auto; }
-  </style>
+<title>Acrobot Training</title>
+<style>
+body{ text-align:center; font-family:sans-serif; margin-top:20px; }
+canvas{ border:2px solid black; }
+button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
+.instructions{ font-size:12px; max-width:420px; margin:10px auto; text-align:left; border:1px solid #aaa; padding:8px; }
+#stageInfo{ font-weight:bold; }
+</style>
 </head>
+
 <body>
 
 <h2>Acrobot Training</h2>
 
-<div class="game-container">
-  <img id="frame" width="350" />
-  <canvas id="overlay" width="350" height="350" style="position:absolute; top:0; left:0;"></canvas>
-</div>
+<canvas id="canvas" width="220" height="220"></canvas>
 
 <h3 id="timer">Time: 0.0 s</h3>
 <h3 id="stageInfo"></h3>
 
-<div class="instructions" id="instructionsBox">
-  <p><strong>Goal</strong><br>Reach the red line. Each stage moves the target higher.</p>
-  <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque.</p>
-  <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
+<div class="instructions">
+<p><strong>Goal</strong><br>Reach the red line. Each stage moves the target higher.</p>
+<p><strong>Controls</strong><br>Use Left and Right arrows.</p>
 </div>
 
-<button id="resetBtn">Restart Stage</button>
-<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
-
-<div id="instructionsModal">
-  <div id="instructionsModalContent">
-    <h3>Acrobot Training Instructions</h3>
-    <p><strong>Goal:</strong> Reach the red line. Each stage moves it higher.</p>
-    <p><strong>Controls:</strong> Use the Left and Right Arrow keys to apply torque.</p>
-    <p><strong>Hint:</strong> Pump the swing — go with the motion, not against it.</p>
-    <button id="startTrainingBtn">Start Training</button>
-  </div>
-</div>
+<button id="resetBtn">Restart Stage</button> <button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
-const frameImg = document.getElementById('frame');
-const overlay = document.getElementById('overlay');
-const resetBtn = document.getElementById('resetBtn');
-const API_BASE = '/acrobot';
 
-const keys = {ArrowLeft:false, ArrowRight:false};
-let stageIndex = 0;
-let stageStartTime = null;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-const STAGES = [
-  {lineY:230, text:'Stage 1: Tip Over Line'},
-  {lineY:150, text:'Stage 2: Tip Over Higher Line'}
-];
+const timerEl = document.getElementById("timer");
+const stageInfo = document.getElementById("stageInfo");
 
-document.addEventListener('keydown',e=>{ if(e.key in keys) keys[e.key]=true; });
-document.addEventListener('keyup',e=>{ if(e.key in keys) keys[e.key]=false; });
+const originY = 35;
+const L1 = 60;
+const L2 = 60;
+
+const API_BASE = "/acrobot";
+
+let state=null;
+let stageStartTime=null;
+let resetting=false;
+
+const keys={ArrowLeft:false,ArrowRight:false};
+
+document.addEventListener("keydown",e=>{
+ if(e.key in keys) keys[e.key]=true;
+});
+
+document.addEventListener("keyup",e=>{
+ if(e.key in keys) keys[e.key]=false;
+});
 
 function getAction(){
-  if(keys.ArrowLeft) return 0;
-  if(keys.ArrowRight) return 2;
-  return 1;
+ if(keys.ArrowLeft) return 0;
+ if(keys.ArrowRight) return 2;
+ return 1;
+}
+
+const STAGES=[
+ {targetY:120,text:"Stage 1: Tip Over Line"},
+ {targetY:80,text:"Stage 2: Tip Over Higher Line"}
+];
+
+let stageIndex=0;
+
+function drawAcrobot(theta1,theta2){
+
+ const w=canvas.width;
+ ctx.clearRect(0,0,w,w);
+
+ const originX=w/2;
+
+ const x1=originX+L1*Math.sin(theta1);
+ const y1=originY+L1*Math.cos(theta1);
+
+ const x2=x1+L2*Math.sin(theta1+theta2);
+ const y2=y1+L2*Math.cos(theta1+theta2);
+
+ ctx.beginPath();
+ ctx.moveTo(originX,originY);
+ ctx.lineTo(x1,y1);
+ ctx.lineTo(x2,y2);
+ ctx.strokeStyle="black";
+ ctx.lineWidth=2;
+ ctx.stroke();
+
+ ctx.fillStyle="black";
+ [[originX,originY],[x1,y1],[x2,y2]].forEach(([x,y])=>{
+   ctx.beginPath();
+   ctx.arc(x,y,3,0,Math.PI*2);
+   ctx.fill();
+ });
+
+ const targetY=STAGES[stageIndex].targetY;
+
+ ctx.beginPath();
+ ctx.setLineDash([5,5]);
+ ctx.strokeStyle="red";
+ ctx.moveTo(0,targetY);
+ ctx.lineTo(w,targetY);
+ ctx.stroke();
+ ctx.setLineDash([]);
+
+ return {y2};
 }
 
 function updateUI(){
-  document.getElementById('timer').textContent = 'Time: '+((performance.now()-stageStartTime)/1000).toFixed(1)+' s';
-  document.getElementById('stageInfo').textContent = STAGES[stageIndex].text;
+ timerEl.textContent=
+  "Time: "+((performance.now()-stageStartTime)/1000).toFixed(1)+" s";
+
+ stageInfo.textContent=STAGES[stageIndex].text;
 }
 
 async function resetStage(){
-  const res = await fetch(`${API_BASE}/reset`,{method:'POST'});
-  const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
-  stageStartTime = performance.now();
+
+ resetting=true;
+
+ const res=await fetch(`${API_BASE}/reset`,{method:"POST"});
+ const data=await res.json();
+
+ state=data.state;
+
+ stageStartTime=performance.now();
+
+ resetting=false;
 }
 
-function drawTarget(){
-  const ctx = overlay.getContext('2d');
-  const w = overlay.width;
-  const h = overlay.height;
-  ctx.clearRect(0,0,w,h);
+function checkTraining(tipY){
 
-  const y = STAGES[stageIndex].lineY;
-  ctx.beginPath();
-  ctx.setLineDash([8,8]);
-  ctx.strokeStyle = 'red';
-  ctx.lineWidth = 3;
-  ctx.moveTo(0,y);
-  ctx.lineTo(w,y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
+ if(tipY<=STAGES[stageIndex].targetY){
 
-function getTipPixelY(tip_y){
-  const minY = -2;
-  const maxY = 2;
-  const normalized = (tip_y - minY) / (maxY - minY);
-  return overlay.height - normalized * overlay.height;
-}
-function checkTraining(tip_y){
-  const tipPixelY = getTipPixelY(tip_y);
-  if(tipPixelY <= STAGES[stageIndex].lineY){
-    stageIndex++;
-    if(stageIndex >= STAGES.length){
-      localStorage.setItem('acrobot_training_complete','1');
-      alert('Training complete! Real Acrobot unlocked.');
-      window.location.href='/static/acrobot.html';
-    } else {
-      alert('Good! Next stage — the line moved higher.');
-      resetStage();
-    }
-  }
+   stageIndex++;
+
+   if(stageIndex>=STAGES.length){
+
+     localStorage.setItem("acrobot_training_complete","1");
+
+     alert("Training complete! Real Acrobot unlocked.");
+
+     window.location.href="/static/acrobot.html";
+
+   }else{
+
+     alert("Good! Next stage — line moved higher.");
+
+     resetStage();
+
+   }
+
+ }
 }
 
 async function step(){
-  const action = getAction();
-  const res = await fetch(`${API_BASE}/step/${action}`,{method:'POST'});
-  const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
 
-  updateUI();
-  drawTarget();
+ if(resetting||!state) return;
 
-  if(data.tip_y !== undefined){
-    checkTraining(data.tip_y);
-  }
+ const action=getAction();
+
+ const res=await fetch(`${API_BASE}/step/${action}`,{method:"POST"});
+ const data=await res.json();
+
+ state=data.state;
+
+ const {y2}=drawAcrobot(state[0],state[1]);
+
+ updateUI();
+
+ checkTraining(y2);
 }
 
 async function gameLoop(){
-  await step();
-  setTimeout(gameLoop,16);
+
+ await step();
+
+ requestAnimationFrame(gameLoop);
 }
 
-// Start button for modal
-document.getElementById('startTrainingBtn').addEventListener('click', ()=>{
-  document.getElementById('instructionsModal').style.display = 'none';
-  resetStage().then(gameLoop);
-});
+document.getElementById("resetBtn").addEventListener("click",resetStage);
 
-resetBtn.addEventListener('click',resetStage);
+resetStage().then(()=>requestAnimationFrame(gameLoop));
+
 </script>
 
 </body>

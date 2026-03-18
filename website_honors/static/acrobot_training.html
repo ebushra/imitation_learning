@@ -112,8 +112,8 @@ function drawAcrobot(theta1,theta2){
 }
 
 function updateUI(){
- timerEl.textContent=
-  "Time: "+((performance.now()-stageStartTime)/1000).toFixed(1)+" s";
+  timerEl.textContent =
+    "Time: " + Math.floor((performance.now() - stageStartTime) / 1000) + " s";
 
  stageInfo.textContent=STAGES[stageIndex].text;
 }

@@ -86,7 +86,8 @@ function getCurrentTime() {
 }
 
 function updateTimerDisplay() {
-    document.getElementById("timer").textContent = "Time: " + getCurrentTime().toFixed(1) + " s";
+    document.getElementById("timer").textContent =
+        "Time: " + Math.floor(getCurrentTime()) + " s";
 }
 
 function recordLap(time) {
@@ -107,7 +108,7 @@ async function resetStage() {
         body: JSON.stringify({ training: true })
     });
     const data = await res.json();
-    frameImg.src = "data:image/png;base64," + data.frame;
+    drawCartPole(overlay, data.state);
     stageStartTime = performance.now();
 }
 
@@ -122,9 +123,8 @@ async function step() {
     });
     const data = await res.json();
 
-    frameImg.src = "data:image/png;base64," + data.frame;
-
-    drawGauge(overlay, data.theta, data.cart_x);
+    drawCartPole(overlay, data.state);
+    drawGauge(overlay, data.state[2], data.state[0]);
     updateTimerDisplay();
     updateStageText();
 
@@ -149,7 +149,64 @@ async function step() {
         }
     }
 }
+function drawCartPole(canvas, state) {
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
 
+    ctx.clearRect(0,0,w,h);
+
+    const x = state[0];
+    const theta = state[2];
+
+    // --- world scaling ---
+    const worldWidth = 4.8;
+    const pixelsPerMeter = w / worldWidth;
+
+    const cartY = 220;
+    const cartWidth = 50;
+    const cartHeight = 25;
+
+    const cartX = (w/2) + x * pixelsPerMeter;
+
+    // --- draw track ---
+    ctx.beginPath();
+    ctx.moveTo(0, cartY + cartHeight/2);
+    ctx.lineTo(w, cartY + cartHeight/2);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // --- draw cart ---
+    ctx.fillStyle = "black";
+    ctx.fillRect(
+        cartX - cartWidth/2,
+        cartY - cartHeight/2,
+        cartWidth,
+        cartHeight
+    );
+
+    // --- draw pole ---
+    const poleLength = 100;
+
+    const poleX = cartX;
+    const poleY = cartY - cartHeight/2;
+
+    const tipX = poleX + poleLength * Math.sin(theta);
+    const tipY = poleY - poleLength * Math.cos(theta);
+
+    ctx.beginPath();
+    ctx.moveTo(poleX, poleY);
+    ctx.lineTo(tipX, tipY);
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // --- pivot ---
+    ctx.beginPath();
+    ctx.arc(poleX, poleY, 4, 0, Math.PI*2);
+    ctx.fill();
+}
 // simple overlay for safe angle
 function drawGauge(canvas, theta, cartX) {
     const ctx = canvas.getContext("2d");

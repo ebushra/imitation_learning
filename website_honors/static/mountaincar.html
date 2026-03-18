@@ -166,7 +166,11 @@ function worldToCanvasX(x) {
 }
 
 function mountainY(x) {
-  return 0.5 - 0.35 * Math.cos(3 * x);
+  return Math.sin(3 * x) * 0.45 + 0.55;
+}
+
+function slope(x) {
+  return 3 * Math.cos(3 * x); // derivative of sin(3x)
 }
 
 function draw(state, goalX=null) {
@@ -176,27 +180,36 @@ function draw(state, goalX=null) {
 
   // --- draw terrain ---
   ctx.beginPath();
+
   for (let px = 0; px < canvas.width; px++) {
     const x = minX + (px / canvas.width) * (maxX - minX);
     const y = mountainY(x);
-  
-    const py = y * canvas.height;
+    const py = canvas.height - (y * canvas.height);
   
     if (px === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
+  
   ctx.strokeStyle = "black";
   ctx.lineWidth = 2;
   ctx.stroke();
 
   // --- draw car ---
   const carX = worldToCanvasX(pos);
-  const carY = mountainY(pos) * canvas.height - 5;
+  const carY = canvas.height - (mountainY(pos) * canvas.height);
 
+  const angle = Math.atan(slope(pos));
+
+  ctx.save();
+  ctx.translate(carX, carY);
+  ctx.rotate(-angle);
+  
   ctx.beginPath();
-  ctx.arc(carX, carY - 10, 10, 0, 2 * Math.PI);
+  ctx.rect(-10, -5, 20, 10);
   ctx.fillStyle = "red";
   ctx.fill();
+  
+  ctx.restore();
 
   // --- draw goal (training) ---
   if (goalX !== null) {

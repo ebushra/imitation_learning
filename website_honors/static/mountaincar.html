@@ -152,30 +152,41 @@ async function resetStage() {
 }
 
 // --- Step / loop ---
-async function gameLoop() {
+let lastStepTime = 0;
+const STEP_INTERVAL = 50; // ms between server steps (~20 Hz)
+
+async function gameLoop(timestamp) {
     if (!running) return;
 
-    const action = getHumanAction();
-    const res = await fetch(`${API_BASE}/step`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({action})
-    });
-    const data = await res.json();
-
-    draw(data.state);
+    // update timer immediately for smooth display
     updateTimerDisplay();
 
-    if (data.done) {
-        laps.push(getCurrentTime().toFixed(1));
-        updateLapsDisplay();
-        episode++;
-        await resetStage();
+    // step only every STEP_INTERVAL
+    if (!lastStepTime || (timestamp - lastStepTime) > STEP_INTERVAL) {
+        lastStepTime = timestamp;
+        const action = getHumanAction();
+        const res = await fetch(`${API_BASE}/step`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({action})
+        });
+        const data = await res.json();
+
+        draw(data.state);
+
+        if (data.done) {
+            laps.push(getCurrentTime().toFixed(1));
+            updateLapsDisplay();
+            episode++;
+            await resetStage();
+        }
+    } else {
+        // draw last known state to keep motion smooth
+        drawLastState();
     }
 
     requestAnimationFrame(gameLoop);
 }
-
 // --- Start session ---
 async function startNewSession() {
     await fetch(`${API_BASE}/newsession`, { method: "POST" });

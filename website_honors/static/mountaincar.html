@@ -79,11 +79,15 @@ function worldToCanvasY(y) { return canvas.height - (y * canvas.height); }
 
 // --- Timer ---
 function getCurrentTime() { return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0; }
-function updateTimerDisplay() { document.getElementById("timer").textContent = `Time: ${getCurrentTime()} s`; }
+function updateTimerDisplay() { 
+    document.getElementById("timer").textContent = `Time: ${Math.floor(getCurrentTime())} s`; 
+}
 
 // --- Laps ---
 function updateLapsDisplay() {
-    lapsDiv.innerHTML = laps.length ? "<strong>Lap Times</strong><br>" + laps.map((t,i)=>`Round ${i+1}: ${t}s`).join("<br>") : "";
+    lapsDiv.innerHTML = laps.length 
+        ? "<strong>Lap Times</strong><br>" + laps.map((t,i)=>`Round ${i+1}: ${Math.floor(t)} s`).join("<br>") 
+        : "";
 }
 
 // --- Human action ---

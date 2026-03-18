@@ -56,7 +56,6 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 
 <script>
 const API_BASE = "/cartpole";
-const frameImg = document.getElementById("frame");
 const overlay = document.getElementById("overlay");
 const resetBtn = document.getElementById("resetBtn");
 
@@ -121,14 +120,16 @@ async function step() {
         body: JSON.stringify({})
     });
     const data = await res.json();
-
+    const ctx = overlay.getContext("2d");
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    
     drawCartPole(overlay, data.state);
     drawGauge(overlay, data.state[2], data.state[0]);
     updateTimerDisplay();
     updateStageText();
 
     const stage = TRAINING_STAGES[stageIndex];
-    if(Math.abs(data.theta) * 180/Math.PI > stage.angle) {
+    if (Math.abs(data.state[2]) * 180/Math.PI > stage.angle) {
         alert(`Exceeded ±${stage.angle}°. Restarting stage.`);
         await resetStage();
         return;
@@ -148,13 +149,11 @@ async function step() {
         }
     }
 }
+    
 function drawCartPole(canvas, state) {
     const ctx = canvas.getContext("2d");
     const w = canvas.width;
     const h = canvas.height;
-
-    ctx.clearRect(0,0,w,h);
-
     const x = state[0];
     const theta = state[2];
 

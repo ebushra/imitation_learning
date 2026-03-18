@@ -94,6 +94,7 @@ function getHumanAction() {
 }
 
 // --- Draw ---
+// --- Draw ---
 function draw(state) {
     const [pos, vel] = state;
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -102,7 +103,9 @@ function draw(state) {
     ctx.beginPath();
     for (let px=0; px<canvas.width; px++) {
         const x = -1.2 + (px/canvas.width)*1.8;
-        const py = worldToCanvasY(mountainY(x));
+        // scale terrain so top isn't cut off
+        const y = mountainY(x) * 0.9 + 0.05; 
+        const py = worldToCanvasY(y);
         if (px===0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
     }
@@ -110,32 +113,28 @@ function draw(state) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Car with subtle tilt
+    // Car as a dot
     const carX = worldToCanvasX(pos);
-    const carY = worldToCanvasY(mountainY(pos));
-    const angle = Math.atan(slope(pos)) * 0.5; // subtle tilt
-
-    ctx.save();
-    ctx.translate(carX, carY);
-    ctx.rotate(-angle);
+    const carY = worldToCanvasY(mountainY(pos) * 0.9 + 0.05);
+    ctx.beginPath();
+    ctx.arc(carX, carY, 5, 0, 2*Math.PI);
     ctx.fillStyle = "red";
-    ctx.fillRect(-10,-5,20,10);
-    ctx.restore();
+    ctx.fill();
 
     // Flag
     const fx = worldToCanvasX(goalX);
-    const fy = worldToCanvasY(mountainY(goalX));
+    const fy = worldToCanvasY(mountainY(goalX) * 0.9 + 0.05);
     ctx.strokeStyle = "green";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(fx, fy);
-    ctx.lineTo(fx, fy-40);
+    ctx.lineTo(fx, fy-30); // shorter pole so it fits
     ctx.stroke();
     ctx.fillStyle = "green";
     ctx.beginPath();
-    ctx.moveTo(fx, fy-40);
-    ctx.lineTo(fx+15, fy-30);
-    ctx.lineTo(fx, fy-20);
+    ctx.moveTo(fx, fy-30);
+    ctx.lineTo(fx+10, fy-20);
+    ctx.lineTo(fx, fy-10);
     ctx.closePath();
     ctx.fill();
 }

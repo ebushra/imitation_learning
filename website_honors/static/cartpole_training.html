@@ -38,7 +38,6 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 <h2>CartPole Training</h2>
 
 <div class="game-container">
-    <img id="frame" width="400" />
     <canvas id="overlay" width="400" height="300" style="position:absolute; top:0; left:0;"></canvas>
 </div>
 
@@ -211,7 +210,6 @@ function drawCartPole(canvas, state) {
 function drawGauge(canvas, theta, cartX) {
     const ctx = canvas.getContext("2d");
     const w = canvas.width;
-    ctx.clearRect(0,0,w,canvas.height);
 
     const worldWidth = 4.8;
     const pixelsPerMeter = w / worldWidth;

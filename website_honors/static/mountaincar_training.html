@@ -106,8 +106,11 @@ function drawOverlay(state, goalX) {
     ctx.stroke();
 
     // Car as dot
-    const carX = worldToCanvasX(state.position);
-    const carY = worldToCanvasY(mountainY(state.position));
+    
+    const pos = state[0];
+    
+    const carX = worldToCanvasX(pos);
+    const carY = worldToCanvasY(mountainY(pos));
     ctx.beginPath();
     ctx.arc(carX, carY, 5, 0, 2*Math.PI);
     ctx.fillStyle = "red";
@@ -155,7 +158,7 @@ async function trainingStep() {
 
     const stage = TRAINING_STAGES[stageIndex];
 
-    if(data.position >= stage.goalX) {
+    if (data.state[0] >= stage.goalX) {
         stageIndex++;
         if(stageIndex >= TRAINING_STAGES.length) {
             trainingPassed = true;

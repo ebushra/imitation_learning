@@ -49,232 +49,151 @@
 
 
 <script>
-
 if (localStorage.getItem("mountaincarUnlocked") !== "true") {
     alert("You must complete MountainCar Training first.");
     window.location.href = "/static/mountaincar_training.html";
 }
-const resetBtn = document.getElementById("resetBtn");
-const API_BASE = "/mountaincar";
-let episode = 0;
-
-const keys = { ArrowLeft: false, ArrowRight: false };
-
-let stageStartTime = null;
-
-async function resetStage() {
-  await reset(); // call server reset
-  stageStartTime = performance.now();
-}
-
-function getCurrentTime() {
-  if (!stageStartTime) return 0;
-  return (performance.now() - stageStartTime) / 1000;
-}
-
-function updateTimerDisplay() {
-  const timerEl = document.getElementById("timer");
-  if (timerEl) {
-    timerEl.textContent = "Time: " + getCurrentTime().toFixed(1) + " s";
-  }
-}
-
-
-let stepCount = 0;
-const TRAIN_EVERY = 300;
-
-const lapsDiv = document.getElementById("laps");
-
-function updateLaps(laps) {
-  if (!laps || laps.length === 0) {
-    lapsDiv.innerHTML = "";
-    return;
-  }
-
-  let html = "<strong>Lap Times</strong><br>";
-  laps.forEach((t, i) => {
-    html += `Round ${i+1}: ${t} s<br>`;
-  });
-
-  lapsDiv.innerHTML = html;
-}
-
-async function startNewSession() {
-  await fetch("/mountaincar/newsession", { method: "POST" });
-}
-
-async function leaveGame() {
-  await fetch("/mountaincar/newsession", { method: "POST" });
-  window.location.href = "/static/index.html";
-}
-
-document.addEventListener("keydown", e => {
-  if (e.key in keys) keys[e.key] = true;
-});
-
-document.addEventListener("keyup", e => {
-  if (e.key in keys) keys[e.key] = false;
-});
-
-function getHumanAction() {
-  if (keys.ArrowLeft) return 0;
-  if (keys.ArrowRight) return 2;
-  return 1; 
-}
-
-async function reset() {
-  const res = await fetch("/mountaincar/reset", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({})
-  });
-
-  const data = await res.json();
-
-  draw(data.state);          // ✅ draw immediately
-  stageStartTime = performance.now();  // ✅ start timer
-}
-  
-async function step(action) {
-  const res = await fetch(`${API_BASE}/step`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({action: action})
-  });
-
-  const data = await res.json();
-  draw(data.state);
-
-  // update lap times
-  updateLaps(data.laps);
-
-  // if episode ended, reset automatically
-  if (data.done) {
-    episode++;
-    resetStage();
-  }
-}
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const resetBtn = document.getElementById("resetBtn");
+const lapsDiv = document.getElementById("laps");
+const API_BASE = "/mountaincar";
+const goalX = 0.5;
 
-const minX = -1.2;
-const maxX = 0.6;
+let keys = { ArrowLeft: false, ArrowRight: false };
+let running = false;
+let stageStartTime = null;
+let laps = [];
+let episode = 0;
 
-function worldToCanvasX(x) {
-  return ((x - minX) / (maxX - minX)) * canvas.width;
+// --- Controls ---
+document.addEventListener("keydown", e => { if (e.key in keys) keys[e.key] = true; });
+document.addEventListener("keyup", e => { if (e.key in keys) keys[e.key] = false; });
+
+// --- Physics helpers ---
+function mountainY(x) { return Math.sin(3*x)*0.45 + 0.55; }
+function slope(x) { return 3*Math.cos(3*x)*0.45; }
+function worldToCanvasX(x) { return ((x + 1.2) / 1.8) * canvas.width; }
+function worldToCanvasY(y) { return canvas.height - (y * canvas.height); }
+
+// --- Timer ---
+function getCurrentTime() { return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0; }
+function updateTimerDisplay() { document.getElementById("timer").textContent = `Time: ${getCurrentTime().toFixed(1)} s`; }
+
+// --- Laps ---
+function updateLapsDisplay() {
+    lapsDiv.innerHTML = laps.length ? "<strong>Lap Times</strong><br>" + laps.map((t,i)=>`Round ${i+1}: ${t}s`).join("<br>") : "";
 }
 
-function mountainY(x) {
-  return Math.sin(3 * x) * 0.45 + 0.55;
+// --- Human action ---
+function getHumanAction() {
+    if (keys.ArrowLeft) return 0;
+    if (keys.ArrowRight) return 2;
+    return 1;
 }
 
-function slope(x) {
-  return 3 * Math.cos(3 * x); // derivative of sin(3x)
-}
+// --- Draw ---
+function draw(state) {
+    const [pos, vel] = state;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-function draw(state, goalX=null) {
-  const [pos, vel] = state;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // --- draw terrain ---
-  ctx.beginPath();
-
-  for (let px = 0; px < canvas.width; px++) {
-    const x = minX + (px / canvas.width) * (maxX - minX);
-    const y = mountainY(x);
-    const py = canvas.height - (y * canvas.height);
-  
-    if (px === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // --- draw car ---
-  const carX = worldToCanvasX(pos);
-  const carY = canvas.height - (mountainY(pos) * canvas.height);
-
-  const angle = Math.atan(slope(pos));
-
-  ctx.save();
-  ctx.translate(carX, carY);
-  ctx.rotate(-angle);
-  
-  ctx.beginPath();
-  ctx.rect(-10, -5, 20, 10);
-  ctx.fillStyle = "red";
-  ctx.fill();
-  
-  ctx.restore();
-
-  // --- draw goal (training) ---
-  if (goalX !== null) {
-    const gx = worldToCanvasX(goalX);
+    // Terrain
     ctx.beginPath();
-    ctx.moveTo(gx, 0);
-    ctx.lineTo(gx, canvas.height);
+    for (let px=0; px<canvas.width; px++) {
+        const x = -1.2 + (px/canvas.width)*1.8;
+        const py = worldToCanvasY(mountainY(x));
+        if (px===0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Car with subtle tilt
+    const carX = worldToCanvasX(pos);
+    const carY = worldToCanvasY(mountainY(pos));
+    const angle = Math.atan(slope(pos)) * 0.5; // subtle tilt
+
+    ctx.save();
+    ctx.translate(carX, carY);
+    ctx.rotate(-angle);
+    ctx.fillStyle = "red";
+    ctx.fillRect(-10,-5,20,10);
+    ctx.restore();
+
+    // Flag
+    const fx = worldToCanvasX(goalX);
+    const fy = worldToCanvasY(mountainY(goalX));
     ctx.strokeStyle = "green";
     ctx.lineWidth = 3;
-    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx, fy-40);
     ctx.stroke();
-    ctx.setLineDash([]);
-  }
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(fx, fy-40);
+    ctx.lineTo(fx+15, fy-30);
+    ctx.lineTo(fx, fy-20);
+    ctx.closePath();
+    ctx.fill();
 }
 
-let running = false;
+// --- Reset stage ---
+async function resetStage() {
+    const res = await fetch(`${API_BASE}/reset`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({})
+    });
+    const data = await res.json();
+    stageStartTime = performance.now();
+    draw(data.state);
+}
 
+// --- Step / loop ---
 async function gameLoop() {
-  if (!running) return;
+    if (!running) return;
 
-  const action = getHumanAction();
-  const res = await fetch("/mountaincar/step", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ action: action })
-  });
+    const action = getHumanAction();
+    const res = await fetch(`${API_BASE}/step`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({action})
+    });
+    const data = await res.json();
 
-  const data = await res.json();
+    draw(data.state);
+    updateTimerDisplay();
 
-  draw(data.state);   // ✅ THIS is the fix
+    if (data.done) {
+        laps.push(getCurrentTime().toFixed(1));
+        updateLapsDisplay();
+        episode++;
+        await resetStage();
+    }
 
-  updateLaps(data.laps);
-  updateTimerDisplay();
+    requestAnimationFrame(gameLoop);
+}
 
-  if (data.done) {
+// --- Start session ---
+async function startNewSession() {
+    await fetch(`${API_BASE}/newsession`, { method: "POST" });
     await resetStage();
-  }
-
-  setTimeout(gameLoop, 16);
+    running = true;
+    gameLoop();
 }
 
-startNewSession().then(async () => {
-  await resetStage();
-  running = true;
-  gameLoop();
-});
-
+// --- Buttons ---
 resetBtn.addEventListener("click", resetStage);
-
-const statusEl = document.getElementById("status");
-
-// MUST MATCH BACKEND
-const HUMAN_ONLY_ITERS = 3;
-const DECAY = 0.9;
-
-function humanProb() {
-  if (episode < HUMAN_ONLY_ITERS) return 1.0;
-  return Math.max(0.1, Math.pow(DECAY, episode - HUMAN_ONLY_ITERS));
+async function leaveGame() {
+    await fetch(`${API_BASE}/newsession`, { method: "POST" });
+    window.location.href = "/static/index.html";
 }
 
-function updateStatus() {
-  statusEl.textContent =
-    `Steps: ${stepCount} | Human control probability: ${humanProb().toFixed(2)}`;
-}
-
+// --- Start ---
+startNewSession();
 </script>
 
 

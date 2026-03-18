@@ -28,7 +28,7 @@
 <body>
 
 <h2>MountainCar</h2>
-<img id="frame" width="300" />
+<canvas id="gameCanvas" width="600" height="400"></canvas>
 <br>
 <p id="timer" style="font-size:14px; margin-top:6px;">Time: 0.0 s</p>
 <p id="status" style="font-size:14px; margin-top:6px;"></p>
@@ -130,7 +130,7 @@ async function reset() {
     body: JSON.stringify({})  // send empty JSON object
   });
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+  draw(data.state);
 }
   
 async function step(action) {
@@ -141,8 +141,7 @@ async function step(action) {
   });
 
   const data = await res.json();
-
-  frameImg.src = "data:image/png;base64," + data.frame;
+  draw(data.state);
 
   // update lap times
   updateLaps(data.laps);
@@ -154,7 +153,60 @@ async function step(action) {
   }
 }
 
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
+const minX = -1.2;
+const maxX = 0.6;
+
+function worldToCanvasX(x) {
+  return ((x - minX) / (maxX - minX)) * canvas.width;
+}
+
+function mountainY(x) {
+  return Math.sin(3 * x) * 0.45 + 0.55;
+}
+
+function draw(state, goalX=null) {
+  const [pos, vel] = state;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // --- draw terrain ---
+  ctx.beginPath();
+  for (let px = 0; px < canvas.width; px++) {
+    const x = minX + (px / canvas.width) * (maxX - minX);
+    const y = mountainY(x) * canvas.height;
+
+    if (px === 0) ctx.moveTo(px, y);
+    else ctx.lineTo(px, y);
+  }
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // --- draw car ---
+  const carX = worldToCanvasX(pos);
+  const carY = mountainY(pos) * canvas.height;
+
+  ctx.beginPath();
+  ctx.arc(carX, carY - 10, 10, 0, 2 * Math.PI);
+  ctx.fillStyle = "red";
+  ctx.fill();
+
+  // --- draw goal (training) ---
+  if (goalX !== null) {
+    const gx = worldToCanvasX(goalX);
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, canvas.height);
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
 
 let running = false;
 

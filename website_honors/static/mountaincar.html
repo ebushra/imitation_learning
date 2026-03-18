@@ -54,7 +54,6 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
     alert("You must complete MountainCar Training first.");
     window.location.href = "/static/mountaincar_training.html";
 }
-const frameImg = document.getElementById("frame");
 const resetBtn = document.getElementById("resetBtn");
 const API_BASE = "/mountaincar";
 let episode = 0;
@@ -127,10 +126,13 @@ async function reset() {
   const res = await fetch("/mountaincar/reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({})  // send empty JSON object
+    body: JSON.stringify({})
   });
+
   const data = await res.json();
-  draw(data.state);
+
+  draw(data.state);          // ✅ draw immediately
+  stageStartTime = performance.now();  // ✅ start timer
 }
   
 async function step(action) {
@@ -164,7 +166,7 @@ function worldToCanvasX(x) {
 }
 
 function mountainY(x) {
-  return Math.sin(3 * x) * 0.45 + 0.55;
+  return 0.5 - 0.35 * Math.cos(3 * x);
 }
 
 function draw(state, goalX=null) {
@@ -176,10 +178,12 @@ function draw(state, goalX=null) {
   ctx.beginPath();
   for (let px = 0; px < canvas.width; px++) {
     const x = minX + (px / canvas.width) * (maxX - minX);
-    const y = mountainY(x) * canvas.height;
-
-    if (px === 0) ctx.moveTo(px, y);
-    else ctx.lineTo(px, y);
+    const y = mountainY(x);
+  
+    const py = y * canvas.height;
+  
+    if (px === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
   ctx.strokeStyle = "black";
   ctx.lineWidth = 2;
@@ -187,7 +191,7 @@ function draw(state, goalX=null) {
 
   // --- draw car ---
   const carX = worldToCanvasX(pos);
-  const carY = mountainY(pos) * canvas.height;
+  const carY = mountainY(pos) * canvas.height - 5;
 
   ctx.beginPath();
   ctx.arc(carX, carY - 10, 10, 0, 2 * Math.PI);
@@ -206,6 +210,28 @@ function draw(state, goalX=null) {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+
+  // --- draw flag (real goal at x = 0.5) ---
+  const goalX = 0.5;
+  const gx = worldToCanvasX(goalX);
+  const gy = mountainY(goalX) * canvas.height;
+  
+  // pole
+  ctx.beginPath();
+  ctx.moveTo(gx, gy);
+  ctx.lineTo(gx, gy - 40);
+  ctx.strokeStyle = "green";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  
+  // flag
+  ctx.beginPath();
+  ctx.moveTo(gx, gy - 40);
+  ctx.lineTo(gx + 15, gy - 30);
+  ctx.lineTo(gx, gy - 20);
+  ctx.closePath();
+  ctx.fillStyle = "green";
+  ctx.fill();
 }
 
 let running = false;
@@ -221,18 +247,18 @@ async function gameLoop() {
   });
 
   const data = await res.json();
-  frameImg.src = "data:image/png;base64," + data.frame;
+
+  draw(data.state);   // ✅ THIS is the fix
 
   updateLaps(data.laps);
-  updateTimerDisplay(); // update every frame
+  updateTimerDisplay();
 
   if (data.done) {
-    await resetStage(); // reset timer + backend
+    await resetStage();
   }
 
   setTimeout(gameLoop, 16);
 }
-
 
 startNewSession().then(async () => {
   await resetStage();

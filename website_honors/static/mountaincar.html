@@ -30,7 +30,7 @@
 <h2>MountainCar</h2>
 <canvas id="gameCanvas" width="300" height="200"></canvas>
 <br>
-<p id="timer" style="font-size:14px; margin-top:6px;">Time: 0.0 s</p>
+<p id="timer" style="font-size:14px; margin-top:6px;">Time: 0 s</p>
 <p id="status" style="font-size:14px; margin-top:6px;"></p>
 <div id="laps" style="margin-top:10px; font-size:14px;"></div>
 
@@ -79,7 +79,7 @@ function worldToCanvasY(y) { return canvas.height - (y * canvas.height); }
 
 // --- Timer ---
 function getCurrentTime() { return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0; }
-function updateTimerDisplay() { document.getElementById("timer").textContent = `Time: ${getCurrentTime().toFixed(1)} s`; }
+function updateTimerDisplay() { document.getElementById("timer").textContent = `Time: ${getCurrentTime()} s`; }
 
 // --- Laps ---
 function updateLapsDisplay() {

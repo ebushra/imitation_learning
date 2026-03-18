@@ -210,28 +210,6 @@ function draw(state, goalX=null) {
     ctx.stroke();
     ctx.setLineDash([]);
   }
-
-  // --- draw flag (real goal at x = 0.5) ---
-  const goalX = 0.5;
-  const gx = worldToCanvasX(goalX);
-  const gy = mountainY(goalX) * canvas.height;
-  
-  // pole
-  ctx.beginPath();
-  ctx.moveTo(gx, gy);
-  ctx.lineTo(gx, gy - 40);
-  ctx.strokeStyle = "green";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  
-  // flag
-  ctx.beginPath();
-  ctx.moveTo(gx, gy - 40);
-  ctx.lineTo(gx + 15, gy - 30);
-  ctx.lineTo(gx, gy - 20);
-  ctx.closePath();
-  ctx.fillStyle = "green";
-  ctx.fill();
 }
 
 let running = false;

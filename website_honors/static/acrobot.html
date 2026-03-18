@@ -154,7 +154,7 @@ async function gameLoop(){
   await step();
 
   timerEl.textContent =
-    "Time: " + Math.floor((performance.now() - stageStartTime) / 1000) + " s";
+    "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
 
   requestAnimationFrame(gameLoop);
 }

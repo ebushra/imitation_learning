@@ -96,7 +96,6 @@ def get_env(session_id):
         }
         locks[session_id] = threading.Lock()
     return envs[session_id], locks[session_id]
-cartpole.training_mode = False
 
 # =====================
 # Routes for static pages

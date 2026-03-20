@@ -17,13 +17,11 @@ from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
-app.secret_key = "dev-secret-key"
-
 # =====================
 # Setup Flask app
 # =====================
 app = Flask(__name__, static_folder="../static")
-
+app.secret_key = "dev-secret-key"
 # =====================
 # Data directory for recording games
 # =====================

@@ -4,6 +4,8 @@ import time
 import csv
 import base64
 from io import BytesIO
+from flask import session
+import uuid
 
 import numpy as np
 from PIL import Image
@@ -14,6 +16,8 @@ from .envs.acrobot_env import WebAcrobot
 from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
+
+app.secret_key = "dev-secret-key"
 
 # =====================
 # Setup Flask app
@@ -78,13 +82,26 @@ def frame_to_base64(frame: np.ndarray) -> str:
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 # =====================
-# Initialize environments
+# Session-based environments
 # =====================
-acrobot = WebAcrobot()
-mountaincar = WebMountainCar()
-cartpole = WebCartPole()
-cartpole.training_mode = False
+envs = {}
 
+def get_session_id():
+    if "session_id" not in session:
+        session["session_id"] = str(uuid.uuid4())
+    return session["session_id"]
+
+def get_envs():
+    sid = get_session_id()
+
+    if sid not in envs:
+        envs[sid] = {
+            "acrobot": WebAcrobot(),
+            "mountaincar": WebMountainCar(),
+            "cartpole": WebCartPole()
+        }
+
+    return envs[sid]
 # =====================
 # Routes for static pages
 # =====================
@@ -102,17 +119,21 @@ def serve_static(filename):
 # Flask /acrobot/reset
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
-    acrobot.reset()
+    env = get_envs()
+
+    env["acrobot"].reset()
     acrobot_rec.new_episode()
 
     return jsonify({
-        "state": acrobot.get_state(),
+        "state": env["acrobot"].get_state(),
         "success": False
     })
     
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
-    obs, reward, done = acrobot.step(action)
+    env = get_envs()
+
+    obs, reward, done = env["acrobot"].step(action)
 
     acrobot_rec.log(
         state=obs,
@@ -123,7 +144,7 @@ def step_acrobot(action):
     )
 
     return jsonify({
-        "state": acrobot.get_state(),
+        "state": env["acrobot"].get_state(),
         "success": bool(done)
     })
     

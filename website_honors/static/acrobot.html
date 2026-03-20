@@ -114,7 +114,7 @@ async function reset(){
 
   resetting=true;
 
-  const res = await fetch(`${API_BASE}/reset`,{method:"POST"});
+  const res = await fetch(`${API_BASE}/reset`,{method:"POST", credentials: "include"});
   const data = await res.json();
 
   state=data.state;
@@ -132,7 +132,7 @@ async function step(){
   if(keys.ArrowLeft) action=0;
   if(keys.ArrowRight) action=2;
 
-  const res = await fetch(`${API_BASE}/step/${action}`,{method:"POST"});
+  const res = await fetch(`${API_BASE}/step/${action}`,{method:"POST", credentials: "include"});
   const data = await res.json();
 
   state=data.state;

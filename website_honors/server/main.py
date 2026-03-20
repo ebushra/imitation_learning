@@ -7,7 +7,12 @@ from io import BytesIO
 
 import numpy as np
 from PIL import Image
-from flask import Flask, jsonify, request, send_from_directory, redirect
+from flask import Flask, jsonify, request, send_from_directory, redirect, session
+import uuid
+import threading
+
+app = Flask(__name__, static_folder="../static")
+app.secret_key = "super_secret_key"  # REQUIRED for sessions
 
 # Import your environment classes and utilities
 from .envs.acrobot_env import WebAcrobot
@@ -39,6 +44,7 @@ class GameRecorder:
         self.writer = csv.writer(self.file)
         if os.stat(f"{DATA_DIR}/{name}.csv").st_size == 0:
             self.writer.writerow([
+                "session_id",   # NEW
                 "timestamp","episode","step","elapsed",
                 "state","action","reward","done","success"
             ])
@@ -48,10 +54,11 @@ class GameRecorder:
         self.step = 0
         self.start_time = time.time()
 
-    def log(self, state, action, reward, done, success):
+    def log(self, session_id, state, action, reward, done, success):
         self.step += 1
         elapsed = time.time() - self.start_time
         self.writer.writerow([
+            session_id,   # NEW
             time.time(),
             self.episode,
             self.step,
@@ -69,20 +76,26 @@ mountaincar_rec = GameRecorder("mountaincar")
 cartpole_rec = GameRecorder("cartpole")
 
 # =====================
-# Utility function
-# =====================
-def frame_to_base64(frame: np.ndarray) -> str:
-    img = Image.fromarray(frame)
-    buffer = BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-# =====================
 # Initialize environments
 # =====================
-acrobot = WebAcrobot()
-mountaincar = WebMountainCar()
-cartpole = WebCartPole()
+# Store environments per session
+envs = {}
+locks = {}
+
+def get_session_id():
+    if "session_id" not in session:
+        session["session_id"] = str(uuid.uuid4())
+    return session["session_id"]
+
+def get_env(session_id):
+    if session_id not in envs:
+        envs[session_id] = {
+            "acrobot": WebAcrobot(),
+            "mountaincar": WebMountainCar(),
+            "cartpole": WebCartPole()
+        }
+        locks[session_id] = threading.Lock()
+    return envs[session_id], locks[session_id]
 cartpole.training_mode = False
 
 # =====================
@@ -102,30 +115,39 @@ def serve_static(filename):
 # Flask /acrobot/reset
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
-    acrobot.reset()
-    acrobot_rec.new_episode()
+    sid = get_session_id()
+    env, lock = get_env(sid)
 
-    return jsonify({
-        "state": acrobot.get_state(),
-        "success": False
-    })
+    with lock:
+        env["acrobot"].reset()
+        acrobot_rec.new_episode()
+
+        return jsonify({
+            "state": env["acrobot"].get_state(),
+            "success": False
+        })
     
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
-    obs, reward, done = acrobot.step(action)
+    sid = get_session_id()
+    env, lock = get_env(sid)
 
-    acrobot_rec.log(
-        state=obs,
-        action=action,
-        reward=reward,
-        done=done,
-        success=done
-    )
+    with lock:
+        obs, reward, done = env["acrobot"].step(action)
 
-    return jsonify({
-        "state": acrobot.get_state(),
-        "success": bool(done)
-    })
+        acrobot_rec.log(
+            sid,
+            state=obs,
+            action=action,
+            reward=reward,
+            done=done,
+            success=done
+        )
+
+        return jsonify({
+            "state": env["acrobot"].get_state(),
+            "success": bool(done)
+        })
     
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():
@@ -136,81 +158,93 @@ def new_session():
 
 @app.route("/mountaincar/reset", methods=["POST"])
 def reset_mountaincar():
+    sid = get_session_id()
+    env, lock = get_env(sid)
+
     data = request.json or {}
     training = data.get("training", False)
     goal = data.get("goalX", 0.5)
 
-    obs = mountaincar.reset(training_mode=training, goal_x=goal)
-    mountaincar_rec.new_episode()
+    with lock:
+        obs = env["mountaincar"].reset(training_mode=training, goal_x=goal)
+        mountaincar_rec.new_episode()
 
-    return jsonify({
-        "state": list(map(float, obs)),
-        "laps": mountaincar.lap_times
-    })
+        return jsonify({
+            "state": list(map(float, obs)),
+            "laps": env["mountaincar"].lap_times
+        })
 
 @app.route("/mountaincar/step", methods=["POST"])
 def step_mountaincar():
+    sid = get_session_id()
+    env, lock = get_env(sid)
+
     data = request.json or {}
     action = int(data.get("action", 0))
 
-    obs, reward, done, success = mountaincar.step(action)
+    with lock:
+        obs, reward, done, success = env["mountaincar"].step(action)
 
-    mountaincar_rec.log(
-        state=obs,
-        action=action,
-        reward=reward,
-        done=done,
-        success=success
-    )
+        mountaincar_rec.log(
+            sid,
+            state=obs,
+            action=action,
+            reward=reward,
+            done=done,
+            success=success
+        )
 
-    return jsonify({
-        "state": list(map(float, obs)),
-        "done": done,
-        "success": success,
-        "laps": mountaincar.lap_times
-    })
+        return jsonify({
+            "state": list(map(float, obs)),
+            "done": done,
+            "success": success,
+            "laps": env["mountaincar"].lap_times
+        })
     
 from fastapi.responses import JSONResponse
 from .utils.render import render_frame  # make sure you have this utility
 
 @app.route("/cartpole/reset", methods=["POST"])
 def reset_cartpole():
+    sid = get_session_id()
+    env, lock = get_env(sid)
+
     data = request.json or {}
     training = data.get("training", False)
 
-    cartpole.reset()
-    cartpole_rec.new_episode()
+    with lock:
+        env["cartpole"].reset(training=training)
+        cartpole_rec.new_episode()
 
-    x, x_dot, theta, theta_dot = cartpole.get_state()
+        x, x_dot, theta, theta_dot = env["cartpole"].get_state()
 
-    return jsonify({
-        "frame": frame_to_base64(cartpole.render()),
-        "done": False,
-        "truncated": False,
-        "theta": float(theta),
-        "cart_x": float(x)
-    })
+        return jsonify({
+            "state": list(map(float, [x, x_dot, theta, theta_dot])),
+            "done": False
+        })
 
 
 @app.route("/cartpole/step/<int:action>", methods=["POST"])
 def step_cartpole(action):
-    obs, reward, terminated, truncated, info = cartpole.step(action)
+    sid = get_session_id()
+    env, lock = get_env(sid)
 
-    x, x_dot, theta, theta_dot = obs
-    done = terminated
+    with lock:
+        obs, reward, terminated, truncated, _ = env["cartpole"].step(action)
 
-    cartpole_rec.log(
-        state=obs,
-        action=action,
-        reward=reward,
-        done=done,
-        success=not done
-    )
+        done = terminated
 
-    return jsonify({
-        "frame": frame_to_base64(cartpole.render()),
-        "done": bool(done),
-        "truncated": bool(truncated),
-        "theta": float(theta),
-        "cart_x": float(x)
-    })
+        cartpole_rec.log(
+            sid,
+            state=obs,
+            action=action,
+            reward=reward,
+            done=done,
+            success=not done
+        )
+
+        return jsonify({
+            "state": list(map(float, obs)),
+            "done": bool(done),
+            "truncated": bool(truncated)
+        })

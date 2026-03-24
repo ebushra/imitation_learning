@@ -148,31 +148,37 @@ def step_acrobot(action):
     
 @app.route("/mountaincar/newsession", methods=["POST"])
 def new_session():
-    global mountaincar
-    mountaincar.close()
-    mountaincar = WebMountainCar()
+    env = get_envs()
+    
+    env["mountaincar"].close()
+    env["mountaincar"] = WebMountainCar()
+
     return jsonify({"status": "new session"})
 
 @app.route("/mountaincar/reset", methods=["POST"])
 def reset_mountaincar():
+    env = get_envs()
+
     data = request.json or {}
     training = data.get("training", False)
     goal = data.get("goalX", 0.5)
 
-    obs = mountaincar.reset(training_mode=training, goal_x=goal)
+    obs = env["mountaincar"].reset(training_mode=training, goal_x=goal)
     mountaincar_rec.new_episode()
 
     return jsonify({
         "state": list(map(float, obs)),
-        "laps": mountaincar.lap_times
+        "laps": env["mountaincar"].lap_times
     })
 
 @app.route("/mountaincar/step", methods=["POST"])
 def step_mountaincar():
+    env = get_envs()
+
     data = request.json or {}
     action = int(data.get("action", 0))
 
-    obs, reward, done, success = mountaincar.step(action)
+    obs, reward, done, success = env["mountaincar"].step(action)
 
     mountaincar_rec.log(
         state=obs,
@@ -186,7 +192,7 @@ def step_mountaincar():
         "state": list(map(float, obs)),
         "done": done,
         "success": success,
-        "laps": mountaincar.lap_times
+        "laps": env["mountaincar"].lap_times
     })
     
 from fastapi.responses import JSONResponse

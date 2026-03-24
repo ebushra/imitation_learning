@@ -137,7 +137,7 @@ function drawOverlay(state, goalX) {
 // --- Reset stage ---
 async function resetStage() {
     const res = await fetch(`${API_BASE}/reset`, {
-        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({training:true})
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({training:true}, credentials: "include")
     });
     const data = await res.json();
     stageStartTime = performance.now();
@@ -148,7 +148,7 @@ async function resetStage() {
 async function trainingStep() {
     const action = getAction();
     const res = await fetch(`${API_BASE}/step`, {
-        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action, training:true})
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action, training:true}, credentials: "include")
     });
     const data = await res.json();
 

@@ -148,7 +148,8 @@ async function resetStage() {
     const res = await fetch(`${API_BASE}/reset`, {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({})
+        body: JSON.stringify({}), 
+        credentials: "include"
     });
     const data = await res.json();
     stageStartTime = performance.now();
@@ -172,7 +173,8 @@ async function gameLoop(timestamp) {
         const res = await fetch(`${API_BASE}/step`, {
             method: "POST",
             headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({action})
+            body: JSON.stringify({action}),
+            credentials: "include"
         });
         const data = await res.json();
 
@@ -193,7 +195,7 @@ async function gameLoop(timestamp) {
 }
 // --- Start session ---
 async function startNewSession() {
-    await fetch(`${API_BASE}/newsession`, { method: "POST" });
+    await fetch(`${API_BASE}/newsession`, { method: "POST", credentials: "include"});
     await resetStage();
     running = true;
     gameLoop();
@@ -202,7 +204,7 @@ async function startNewSession() {
 // --- Buttons ---
 resetBtn.addEventListener("click", resetStage);
 async function leaveGame() {
-    await fetch(`${API_BASE}/newsession`, { method: "POST" });
+    await fetch(`${API_BASE}/newsession`, { method: "POST", credentials: "include" });
     window.location.href = "/static/index.html";
 }
 

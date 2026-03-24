@@ -107,3 +107,6 @@ class WebCartPole:
 
     def close(self):
         self.base.close()
+
+    def get_state(self):
+        return self.base.state

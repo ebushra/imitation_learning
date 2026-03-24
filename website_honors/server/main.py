@@ -200,16 +200,18 @@ from .utils.render import render_frame  # make sure you have this utility
 
 @app.route("/cartpole/reset", methods=["POST"])
 def reset_cartpole():
+    env = get_envs()
+
     data = request.json or {}
     training = data.get("training", False)
 
-    cartpole.reset()
+    env["cartpole"].reset(training=training)
     cartpole_rec.new_episode()
 
-    x, x_dot, theta, theta_dot = cartpole.get_state()
+    x, x_dot, theta, theta_dot = env["cartpole"].get_state()
 
     return jsonify({
-        "frame": frame_to_base64(cartpole.render()),
+        "frame": frame_to_base64(env["cartpole"].render()),
         "done": False,
         "truncated": False,
         "theta": float(theta),
@@ -219,7 +221,9 @@ def reset_cartpole():
 
 @app.route("/cartpole/step/<int:action>", methods=["POST"])
 def step_cartpole(action):
-    obs, reward, terminated, truncated, info = cartpole.step(action)
+    env = get_envs()
+
+    obs, reward, terminated, truncated, info = env["cartpole"].step(action)
 
     x, x_dot, theta, theta_dot = obs
     done = terminated
@@ -233,7 +237,7 @@ def step_cartpole(action):
     )
 
     return jsonify({
-        "frame": frame_to_base64(cartpole.render()),
+        "frame": frame_to_base64(env["cartpole"].render()),
         "done": bool(done),
         "truncated": bool(truncated),
         "theta": float(theta),

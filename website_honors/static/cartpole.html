@@ -74,6 +74,7 @@
 
 <script>
 let animationId = null;
+let running = false;
 
 // ---- LOCK CHECK ----
 if (localStorage.getItem("cartpoleUnlocked") !== "true") {
@@ -130,6 +131,8 @@ function recordLap(time) {
 
 // --- Reset ---
 async function reset() {
+  running = false;
+  
   if (animationId) {
     cancelAnimationFrame(animationId);
   }
@@ -148,11 +151,15 @@ async function reset() {
 
   drawCartPole(overlay, data.state);
   startTime = performance.now();
+
+  running = true;
   animationId = requestAnimationFrame(step);
 }
 
 // --- Step ---
 async function step() {
+  if (!running) return;
+  
   const action = getAction();
 
   const res = await fetch(`${API_BASE}/step/${action}`, {
@@ -163,6 +170,8 @@ async function step() {
   });
 
   const data = await res.json();
+
+  if (!running) return;
 
   const ctx = overlay.getContext("2d");
   ctx.clearRect(0, 0, overlay.width, overlay.height);

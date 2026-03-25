@@ -122,7 +122,7 @@ async function step() {
     });
     const data = await res.json();
     const ctx = overlay.getContext("2d");
-    //ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
     
     drawCartPole(overlay, data.state);
     drawGauge(overlay, data.state[2], data.state[0]);

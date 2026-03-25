@@ -103,7 +103,8 @@ async function resetStage() {
     const res = await fetch(`${API_BASE}/reset`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ training: true })
+        body: JSON.stringify({ training: true }),
+        credentials: "include"
     });
     const data = await res.json();
     drawCartPole(overlay, data.state);
@@ -117,7 +118,8 @@ async function step() {
     const res = await fetch(`${API_BASE}/step/${action}`, {
         method:"POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({})
+        body: JSON.stringify({}),
+        credentials: "include"
     });
     const data = await res.json();
     const ctx = overlay.getContext("2d");

@@ -73,6 +73,7 @@
 <button onclick="location.href='/index.html'">⬅ Back to Menu</button>
 
 <script>
+let animationId = null;
 
 // ---- LOCK CHECK ----
 if (localStorage.getItem("cartpoleUnlocked") !== "true") {
@@ -129,14 +130,24 @@ function recordLap(time) {
 
 // --- Reset ---
 async function reset() {
-    const res = await fetch(`${API_BASE}/reset`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ training: true })
-    });
-    const data = await res.json();
-    drawCartPole(overlay, data.state);
-    stageStartTime = performance.now();
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+
+  const res = await fetch(`${API_BASE}/reset`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({})
+  });
+
+  const data = await res.json();
+
+  const ctx = overlay.getContext("2d");
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  drawCartPole(overlay, data.state);
+  startTime = performance.now();
+  animationId = requestAnimationFrame(step);
 }
 
 // --- Step ---
@@ -162,11 +173,12 @@ async function step() {
   if (data.done) {
     const lapTime = getCurrentTime();
     recordLap(lapTime);
-    await reset();
+
+    await reset();   // reset handles restarting loop
     return;
   }
 
-  requestAnimationFrame(step);
+  animationId = requestAnimationFrame(step);
 }
 
 // --- Draw CartPole ---
@@ -261,7 +273,7 @@ function drawGauge(canvas, theta, cartX) {
 }
 
 // --- Start ---
-reset().then(() => requestAnimationFrame(step));
+reset();  
 resetBtn.addEventListener("click", reset);
 
 </script>

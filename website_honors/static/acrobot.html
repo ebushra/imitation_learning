@@ -149,9 +149,9 @@ async function step(){
   }
 }
 
-async function gameLoop(){
+function gameLoop(){
 
-  await step();
+  step();
 
   timerEl.textContent =
     "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";

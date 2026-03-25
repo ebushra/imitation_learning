@@ -64,7 +64,8 @@ class GameRecorder:
             done,
             success
         ])
-        self.file.flush()
+        if self.step % 20 == 0:
+            self.file.flush()        
 
 acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")

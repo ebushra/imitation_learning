@@ -6,31 +6,20 @@ import base64
 from io import BytesIO
 from flask import session
 import uuid
-
 import numpy as np
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory, redirect
 
-# Import your environment classes and utilities
 from .envs.acrobot_env import WebAcrobot
 from .envs.mountaincar_env import WebMountainCar
 from .envs.cartpole_env import WebCartPole
 from .utils.render import render_frame
 
-# =====================
-# Setup Flask app
-# =====================
 app = Flask(__name__, static_folder="../static")
 app.secret_key = "dev-secret-key"
-# =====================
-# Data directory for recording games
-# =====================
 DATA_DIR = "human_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# =====================
-# GameRecorder
-# =====================
 class GameRecorder:
     def __init__(self, name):
         self.name = name
@@ -64,25 +53,13 @@ class GameRecorder:
             done,
             success
         ])
-        if self.step % 20 == 0:
+        if self.step % 50 == 0 or done:
             self.file.flush()        
 
 acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")
 cartpole_rec = GameRecorder("cartpole")
 
-# =====================
-# Utility function
-# =====================
-def frame_to_base64(frame: np.ndarray) -> str:
-    img = Image.fromarray(frame)
-    buffer = BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-# =====================
-# Session-based environments
-# =====================
 envs = {}
 
 def get_session_id():
@@ -101,9 +78,7 @@ def get_envs():
         }
 
     return envs[sid]
-# =====================
-# Routes for static pages
-# =====================
+
 @app.route("/")
 def root():
     return redirect("/static/index.html")
@@ -112,10 +87,6 @@ def root():
 def serve_static(filename):
     return send_from_directory(app.static_folder, filename)
 
-# =====================
-# API endpoints
-# =====================
-# Flask /acrobot/reset
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
     env = get_envs()
@@ -197,7 +168,7 @@ def step_mountaincar():
     })
     
 from fastapi.responses import JSONResponse
-from .utils.render import render_frame  # make sure you have this utility
+from .utils.render import render_frame  
 
 @app.route("/cartpole/reset", methods=["POST"])
 def reset_cartpole():

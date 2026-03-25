@@ -38,7 +38,8 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 <h2>CartPole Training</h2>
 
 <div class="game-container">
-    <canvas id="overlay" width="400" height="300" style="position:absolute; top:0; left:0;"></canvas>
+    <canvas id="overlay" width="400" height="300"
+        style="position:absolute; top:8px; left:8px;"></canvas>
 </div>
 
 <h3 id="timer">Time: 0.0 s</h3>
@@ -121,9 +122,9 @@ async function step() {
     });
     const data = await res.json();
     const ctx = overlay.getContext("2d");
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    //ctx.clearRect(0, 0, overlay.width, overlay.height);
     
-    //drawCartPole(overlay, data.state);
+    drawCartPole(overlay, data.state);
     drawGauge(overlay, data.state[2], data.state[0]);
     updateTimerDisplay();
     updateStageText();

@@ -37,9 +37,8 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 
 <h2>CartPole Training</h2>
 
-<div class="game-container">
-    <canvas id="overlay" width="400" height="300"
-        style="position:absolute; top:8px; left:8px;"></canvas>
+<div class="game-container" style="width:400px; height:300px;">
+    <canvas id="overlay" width="400" height="300"></canvas>
 </div>
 
 <h3 id="timer">Time: 0.0 s</h3>
@@ -53,7 +52,7 @@ button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 </div>
 
 <button id="resetBtn">Restart Stage</button>
-<button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
+<button onclick="location.href='/index.html'">⬅ Back to Menu</button>
 
 <script>
 const API_BASE = "/cartpole";
@@ -213,7 +212,7 @@ function drawGauge(canvas, theta, cartX) {
 
     const worldWidth = 4.8;
     const pixelsPerMeter = w / worldWidth;
-    const cartPixelX = (w/2) + cartX*pixelsPerMeter + 7;
+    const cartPixelX = (w/2) + cartX*pixelsPerMeter;
 
     const pivotX = cartPixelX;
     const pivotY = 200;

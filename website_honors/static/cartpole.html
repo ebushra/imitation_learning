@@ -129,18 +129,14 @@ function recordLap(time) {
 
 // --- Reset ---
 async function reset() {
-  const res = await fetch(`${API_BASE}/reset`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({})
-  });
-
-  const data = await res.json();
-
-  startTimer();
-
-  // draw initial frame
-  drawCartPole(overlay, data.state);
+    const res = await fetch(`${API_BASE}/reset`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ training: true })
+    });
+    const data = await res.json();
+    drawCartPole(overlay, data.state);
+    stageStartTime = performance.now();
 }
 
 // --- Step ---

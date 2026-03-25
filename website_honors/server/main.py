@@ -211,11 +211,11 @@ def reset_cartpole():
     x, x_dot, theta, theta_dot = env["cartpole"].get_state()
 
     return jsonify({
-        "frame": frame_to_base64(env["cartpole"].render()),
-        "done": False,
-        "truncated": False,
+        "state": list(map(float, cartpole.get_state())),
         "theta": float(theta),
-        "cart_x": float(x)
+        "cart_x": float(x),
+        "done": False,
+        "truncated": False
     })
 
 
@@ -237,9 +237,9 @@ def step_cartpole(action):
     )
 
     return jsonify({
-        "frame": frame_to_base64(env["cartpole"].render()),
-        "done": bool(done),
-        "truncated": bool(truncated),
+        "state": list(map(float, obs)),
         "theta": float(theta),
-        "cart_x": float(x)
+        "cart_x": float(x),
+        "done": bool(done),
+        "truncated": bool(truncated)
     })

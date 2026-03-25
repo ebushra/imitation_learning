@@ -211,7 +211,7 @@ def reset_cartpole():
     x, x_dot, theta, theta_dot = env["cartpole"].get_state()
 
     return jsonify({
-        "state": list(map(float, cartpole.get_state())),
+        "state": list(map(float, env["cartpole"].get_state())),
         "theta": float(theta),
         "cart_x": float(x),
         "done": False,

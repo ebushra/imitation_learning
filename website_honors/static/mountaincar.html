@@ -76,6 +76,13 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
     window.location.href = "/static/mountaincar_training.html";
 }
 
+const startBtn = document.getElementById("startTrainingBtn");
+const modal = document.getElementById("instructionsModal");
+
+startBtn.addEventListener("click", () => {
+    modal.style.display = "none";
+});
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const resetBtn = document.getElementById("resetBtn");

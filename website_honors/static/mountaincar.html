@@ -79,8 +79,9 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
 const startBtn = document.getElementById("startTrainingBtn");
 const modal = document.getElementById("instructionsModal");
 
-startBtn.addEventListener("click", () => {
+startBtn.addEventListener("click", async () => {
     modal.style.display = "none";
+    await startNewSession();
 });
 
 const canvas = document.getElementById("gameCanvas");
@@ -237,11 +238,6 @@ async function leaveGame() {
     window.location.href = "/static/index.html";
 }
 
-// --- Start ---
-startNewSession();
 </script>
-
-
-
 </body>
 </html>

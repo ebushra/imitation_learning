@@ -63,7 +63,7 @@ const API_BASE = "/cartpole";
 const overlay = document.getElementById("overlay");
 const resetBtn = document.getElementById("resetBtn");
 
-const keys = { ArrowLeft: false, ArrowRight: false };
+let keys = { ArrowLeft: false, ArrowRight: false };
 document.addEventListener("keydown", e => { if(e.key in keys) keys[e.key] = true; });
 document.addEventListener("keyup", e => { if(e.key in keys) keys[e.key] = false; });
 
@@ -104,6 +104,10 @@ function updateStageText() {
 }
 
 async function resetStage() {
+    // Clear keys to prevent “stuck” presses
+    keys.ArrowLeft = false;
+    keys.ArrowRight = false;
+
     const res = await fetch(`${API_BASE}/reset`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -113,6 +117,7 @@ async function resetStage() {
     const data = await res.json();
     drawCartPole(overlay, data.state);
     stageStartTime = performance.now();
+    updateStageText();
 }
 
 async function step() {
@@ -126,9 +131,8 @@ async function step() {
         credentials: "include"
     });
     const data = await res.json();
-    const ctx = overlay.getContext("2d");
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
     
+    overlay.getContext("2d").clearRect(0,0,overlay.width,overlay.height);
     drawCartPole(overlay, data.state);
     drawGauge(overlay, data.state[2], data.state[0]);
     updateTimerDisplay();
@@ -155,7 +159,7 @@ async function step() {
         }
     }
 }
-    
+
 function drawCartPole(canvas, state) {
     const ctx = canvas.getContext("2d");
     const w = canvas.width;
@@ -163,17 +167,15 @@ function drawCartPole(canvas, state) {
     const x = state[0];
     const theta = state[2];
 
-    // --- world scaling ---
     const worldWidth = 4.8;
     const pixelsPerMeter = w / worldWidth;
 
     const cartY = 220;
     const cartWidth = 50;
     const cartHeight = 25;
-
     const cartX = (w/2) + x * pixelsPerMeter;
 
-    // --- draw track ---
+    // Track
     ctx.beginPath();
     ctx.moveTo(0, cartY + cartHeight/2);
     ctx.lineTo(w, cartY + cartHeight/2);
@@ -181,21 +183,14 @@ function drawCartPole(canvas, state) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // --- draw cart ---
+    // Cart
     ctx.fillStyle = "black";
-    ctx.fillRect(
-        cartX - cartWidth/2,
-        cartY - cartHeight/2,
-        cartWidth,
-        cartHeight
-    );
+    ctx.fillRect(cartX - cartWidth/2, cartY - cartHeight/2, cartWidth, cartHeight);
 
-    // --- draw pole ---
+    // Pole
     const poleLength = 100;
-
     const poleX = cartX;
     const poleY = cartY - cartHeight/2;
-
     const tipX = poleX + poleLength * Math.sin(theta);
     const tipY = poleY - poleLength * Math.cos(theta);
 
@@ -206,16 +201,15 @@ function drawCartPole(canvas, state) {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // --- pivot ---
+    // Pivot
     ctx.beginPath();
     ctx.arc(poleX, poleY, 4, 0, Math.PI*2);
     ctx.fill();
 }
-// simple overlay for safe angle
+
 function drawGauge(canvas, theta, cartX) {
     const ctx = canvas.getContext("2d");
     const w = canvas.width;
-
     const worldWidth = 4.8;
     const pixelsPerMeter = w / worldWidth;
     const cartPixelX = (w/2) + cartX*pixelsPerMeter;
@@ -225,12 +219,14 @@ function drawGauge(canvas, theta, cartX) {
     const radius = 80;
     const safeAngle = TRAINING_STAGES[stageIndex].angle * Math.PI/180;
 
+    // Red semi-circle
     ctx.beginPath();
     ctx.arc(pivotX, pivotY, radius, Math.PI, 0);
     ctx.strokeStyle = "rgba(255,0,0,0.35)";
     ctx.lineWidth = 6;
     ctx.stroke();
 
+    // Green safe-angle overlay
     ctx.beginPath();
     ctx.arc(pivotX, pivotY, radius, -Math.PI/2 - safeAngle, -Math.PI/2 + safeAngle);
     ctx.strokeStyle = "rgba(0,255,0,0.5)";
@@ -238,7 +234,7 @@ function drawGauge(canvas, theta, cartX) {
     ctx.stroke();
 }
 
-// main game loop
+// Game loop
 async function gameLoop() {
     await step();
     if(!trainingPassed) requestAnimationFrame(gameLoop);
@@ -252,8 +248,9 @@ document.getElementById("startTrainingBtn").addEventListener("click", async () =
 });
 
 // Reset button
-resetBtn.addEventListener("click", resetStage);
-
+resetBtn.addEventListener("click", async () => {
+    await resetStage();
+});
 </script>
 </body>
 </html>

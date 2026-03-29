@@ -27,6 +27,28 @@
 </head>
 <body>
 
+<div id="instructionsModal">
+  <div id="instructionsModalContent">
+    <h3>MountainCar Instructions</h3>
+    <p><strong>Goal:</strong> Reach the green line at the top of the hill as fast as possible. Reach the green flag on the right hill as fast as possible. Please complete at least 5 rounds, but no more than 10.</p>
+    <p><strong>Controls:</strong> Use the <em>Left</em> and <em>Right Arrow</em> keys to accelerate the car.</p>
+    <p><strong>Hint:</strong> Build momentum by rocking back and forth!</p>
+    <button id="startTrainingBtn">Start Training</button>
+  </div>
+</div>
+
+<style>
+  #instructionsModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  #instructionsModalContent {
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
+  }
+  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
+</style>
+
 <h2>MountainCar</h2>
 <canvas id="gameCanvas" width="300" height="200"></canvas>
 <br>
@@ -37,7 +59,7 @@
 
 
 <div class="instructions">
-  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete at least 3 rounds.<br> </p>
+  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete at least 5 rounds, but no more than 10.<br> </p>
   <p> <strong>Controls</strong><br> 
   Left / Right Arrow keys. </p> 
   <p> <strong>Hint</strong><br> Move the dot to gain enough momentum to reach the flag. </p>

@@ -212,7 +212,7 @@ async function step() {
 
   updateTimerDisplay();
 
-  if (data.done) {
+  if (data.done || data.truncated) {
     const lapTime = getCurrentTime();
     recordLap(lapTime);
 

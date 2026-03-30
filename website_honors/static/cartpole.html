@@ -49,6 +49,29 @@
 
 <body>
 
+<div id="instructionsModal">
+  <div id="instructionsModalContent">
+    <h3>MountainCar Instructions</h3>
+    <p><strong>Goal:</strong> Keep the pole balanced upright on the cart for as long as possible. The game will terminate automatically after 30 seconds. Complete at least 3 rounds.</p>
+    <p><strong>Controls</strong><br> Use the <em>Left</em> and <em>Right Arrow</em> keys to move the cart.</p>
+    <p><strong>Hint</strong><br>Quickly alternate between the left and right arrow keys. Remember, your actions move the cart, not the pole, so if your pole is leaning to the right, try to push the cart to the right, and vice versa.</p>
+    <button id="startTrainingBtn">Start Training</button>
+  </div>
+</div>
+
+<style>
+  #instructionsModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  #instructionsModalContent {
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
+  }
+  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
+</style>
+
+
 <h2>CartPole</h2>
 
 <div class="game-container">
@@ -73,6 +96,14 @@
 <button onclick="location.href='/index.html'">⬅ Back to Menu</button>
 
 <script>
+const startBtn = document.getElementById("startTrainingBtn");
+const modal = document.getElementById("instructionsModal");
+
+startBtn.addEventListener("click", async () => {
+    modal.style.display = "none";
+    await startNewSession();
+});
+  
 let animationId = null;
 let running = false;
 
@@ -284,8 +315,8 @@ function drawGauge(canvas, theta, cartX) {
 }
 
 // --- Start ---
-reset();  
-resetBtn.addEventListener("click", reset);
+//reset();  
+//resetBtn.addEventListener("click", reset);
 
 </script>
 

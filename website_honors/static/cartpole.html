@@ -101,7 +101,7 @@ const modal = document.getElementById("instructionsModal");
 
 startBtn.addEventListener("click", async () => {
     modal.style.display = "none";
-    await startNewSession();
+    await reset();
 });
   
 let animationId = null;

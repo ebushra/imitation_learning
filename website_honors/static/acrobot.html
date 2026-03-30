@@ -11,6 +11,28 @@
 </head>
 <body>
 
+<div id="instructionsModal">
+  <div id="instructionsModalContent">
+    <h3>MountainCar Instructions</h3>
+     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete at least 5 rounds, but no more than 10. </p>
+    <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the middle joint.</p>
+    <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
+    <button id="startTrainingBtn">Start Training</button>
+  </div>
+</div>
+
+<style>
+  #instructionsModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  #instructionsModalContent {
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
+  }
+  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
+</style>
+
 <h2>Acrobot</h2>
 
 <canvas id="acrobotCanvas" width="220" height="220"></canvas>
@@ -27,6 +49,13 @@
 <button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
+const startBtn = document.getElementById("startTrainingBtn");
+const modal = document.getElementById("instructionsModal");
+
+startBtn.addEventListener("click", async () => {
+    modal.style.display = "none";
+    await reset();
+});
 // --- Training gate ---
 if(!localStorage.getItem("acrobot_training_complete")){
   alert("You must complete Acrobot training first!");

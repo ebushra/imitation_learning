@@ -93,7 +93,7 @@ class WebCartPole:
 
         # time limit
         self.total_reward += 1
-        truncated = self.total_reward >= 500
+        truncated = self.total_reward >= 250
 
         reward = 1.0
         obs = np.array(self.base.state, dtype=np.float32)

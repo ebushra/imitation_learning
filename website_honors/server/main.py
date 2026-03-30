@@ -17,6 +17,7 @@ from .utils.render import render_frame
 
 app = Flask(__name__, static_folder="../static")
 app.secret_key = "dev-secret-key"
+
 DATA_DIR = "human_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -26,24 +27,33 @@ class GameRecorder:
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
-        self.file = open(f"{DATA_DIR}/{name}.csv", "a", newline="")
+        self.filepath = f"{DATA_DIR}/{name}.csv"
+
+        # Check if file exists or is empty
+        file_exists = os.path.exists(self.filepath)
+        file_empty = not file_exists or os.stat(self.filepath).st_size == 0
+
+        self.file = open(self.filepath, "a", newline="")
         self.writer = csv.writer(self.file)
-        if os.stat(f"{DATA_DIR}/{name}.csv").st_size == 0:
+
+        if file_empty:
             self.writer.writerow([
-                "timestamp","episode","step","elapsed",
-                "state","action","reward","done","success"
+                "timestamp", "user_id", "episode", "step", "elapsed",
+                "state", "action", "reward", "done", "success", "training"
             ])
+            self.file.flush()
 
     def new_episode(self):
         self.episode += 1
         self.step = 0
         self.start_time = time.time()
 
-    def log(self, state, action, reward, done, success):
+    def log(self, state, action, reward, done, success, training=False):
         self.step += 1
         elapsed = time.time() - self.start_time
         self.writer.writerow([
             time.time(),
+            get_session_id(),  # add user/session id
             self.episode,
             self.step,
             elapsed,
@@ -51,15 +61,18 @@ class GameRecorder:
             action,
             reward,
             done,
-            success
+            success,
+            training          # mark whether this is training data
         ])
         if self.step % 50 == 0 or done:
-            self.file.flush()        
+            self.file.flush()
 
+# Create recorders
 acrobot_rec = GameRecorder("acrobot")
 mountaincar_rec = GameRecorder("mountaincar")
 cartpole_rec = GameRecorder("cartpole")
 
+# Environment storage
 envs = {}
 
 def get_session_id():
@@ -69,14 +82,12 @@ def get_session_id():
 
 def get_envs():
     sid = get_session_id()
-
     if sid not in envs:
         envs[sid] = {
             "acrobot": WebAcrobot(),
             "mountaincar": WebMountainCar(),
             "cartpole": WebCartPole()
         }
-
     return envs[sid]
 
 @app.route("/")
@@ -104,13 +115,15 @@ def step_acrobot(action):
     env = get_envs()
 
     obs, reward, done = env["acrobot"].step(action)
-
+    data = request.json or {}
+    training = data.get("training", False)
     acrobot_rec.log(
         state=obs,
         action=action,
         reward=reward,
         done=done,
-        success=done
+        success=not done,
+        training=training
     )
 
     return jsonify({
@@ -152,12 +165,15 @@ def step_mountaincar():
 
     obs, reward, done, success = env["mountaincar"].step(action)
 
+    data = request.json or {}
+    training = data.get("training", False)
     mountaincar_rec.log(
         state=obs,
         action=action,
         reward=reward,
         done=done,
-        success=success
+        success=not done,
+        training=training
     )
 
     return jsonify({
@@ -199,13 +215,15 @@ def step_cartpole(action):
 
     x, x_dot, theta, theta_dot = obs
     done = terminated
-
+    data = request.json or {}
+    training = data.get("training", False)
     cartpole_rec.log(
         state=obs,
         action=action,
         reward=reward,
         done=done,
-        success=not done
+        success=not done,
+        training=training
     )
 
     return jsonify({

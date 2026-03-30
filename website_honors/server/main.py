@@ -115,15 +115,13 @@ def step_acrobot(action):
     env = get_envs()
 
     obs, reward, done = env["acrobot"].step(action)
-    data = request.json or {}
-    training = data.get("training", False)
     acrobot_rec.log(
         state=obs,
         action=action,
         reward=reward,
         done=done,
         success=not done,
-        training=training
+        training=False
     )
 
     return jsonify({

@@ -48,6 +48,9 @@
 <button onclick="location.href='/index.html'">⬅ Back to Menu</button>
 
 <script>
+if (localStorage.getItem("consentGiven") !== "true") {
+  window.location.href = "/static/consent.html";
+}
 
 const overlay = document.getElementById("overlay");
 const resetBtn = document.getElementById("resetBtn");

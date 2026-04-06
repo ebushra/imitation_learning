@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Research Consent Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.5;
+      background: #f9f9f9;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+    }
+
+    .agree {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+
+    .decline {
+      background-color: #f44336;
+      color: white;
+      border: none;
+    }
+
+    .scroll-box {
+      max-height: 500px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Consent to Participate in Research</h2>
+
+  <div class="scroll-box">
+
+    <div class="section">
+      <h3>1. Summary of the Research</h3>
+      <p>You are invited to take part in a research study. The purpose of this study is to understand how people perform simple computer control tasks and how their actions help train artificial intelligence systems.</p>
+      <p>If you join the study, you will play a simple online game and answer a few short questions.</p>
+      <p>Your total time in the study will be about 15 minutes.</p>
+      <p>The main risks are mild frustration or fatigue and a very small risk of loss of confidentiality.</p>
+      <p>You will receive $10 compensation for completing the study.</p>
+      <p>About 100 people will take part. Participation is voluntary and you may stop at any time.</p>
+    </div>
+
+    <div class="section">
+      <h3>2. Why is this research being done?</h3>
+      <p>This study examines how humans provide demonstrations that computers can learn from.</p>
+    </div>
+
+    <div class="section">
+      <h3>3. Duration</h3>
+      <p>Your participation will last about 15 minutes.</p>
+    </div>
+
+    <div class="section">
+      <h3>4. What will happen?</h3>
+      <ol>
+        <li>Read this consent form</li>
+        <li>Play a browser-based game</li>
+        <li>Your actions will be recorded</li>
+        <li>Optional short questionnaire</li>
+        <li>Receive a completion code</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h3>5. Risks</h3>
+      <ul>
+        <li>Mild fatigue or frustration</li>
+        <li>Minimal confidentiality risk</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>6. Privacy</h3>
+      <p>No direct identifiers will be collected. Data is stored securely and used only for research.</p>
+    </div>
+
+    <div class="section">
+      <h3>7. Payment</h3>
+      <p>You will receive $10 after completing the study. Payment is not prorated.</p>
+    </div>
+
+    <div class="section">
+      <h3>8. Voluntary Participation</h3>
+      <p>You may stop at any time with no penalty.</p>
+    </div>
+
+    <div class="section">
+      <h3>9. Contact</h3>
+      <p><strong>Dr. Chicheng Zhang</strong><br>
+      chichengz@cs.arizona.edu</p>
+
+      <p><strong>Human Subjects Protection Program</strong><br>
+      Phone: 520-626-8630<br>
+      Email: vpr-irb@arizona.edu</p>
+    </div>
+
+    <div class="section">
+      <h3>Statement of Consent</h3>
+      <p>By agreeing, you confirm that you are 18+, have read this form, and voluntarily agree to participate.</p>
+    </div>
+
+  </div>
+
+  <div class="buttons">
+    <button class="agree" onclick="agree()">I Agree</button>
+    <button class="decline" onclick="decline()">I Do Not Agree</button>
+  </div>
+</div>
+
+<script>
+function agree() {
+  localStorage.setItem("consentGiven", "true");
+  window.location.href = "/static/index.html"; // change if needed
+}
+
+function decline() {
+  alert("You must agree to participate to continue.");
+}
+</script>
+
+</body>
+</html>

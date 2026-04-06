@@ -30,6 +30,9 @@ button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
 <button id="resetBtn">Restart Stage</button> <button onclick="location.href='/static/index.html'">⬅ Back to Menu</button>
 
 <script>
+if (localStorage.getItem("consentGiven") !== "true") {
+  window.location.href = "/static/consent.html";
+}
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");

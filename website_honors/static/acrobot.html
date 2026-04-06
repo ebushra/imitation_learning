@@ -93,8 +93,12 @@ function recordLap(time){
   laps.push(time);
   lapDiv.innerHTML =
     laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`).join("<br>");
-  if (localStorage.getItem("consentGiven") !== "true") {
-    window.location.href = "/static/consent.html";
+  if (laps.length >= 5) {
+    localStorage.setItem("acrobot_complete", "true");
+
+    setTimeout(() => {
+      window.location.href = "/static/mountaincar.html";
+    }, 1500); // small delay so user sees final result
   }
 }
 

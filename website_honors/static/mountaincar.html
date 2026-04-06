@@ -30,7 +30,7 @@
 <div id="instructionsModal">
   <div id="instructionsModalContent">
     <h3>MountainCar Instructions</h3>
-    <p><strong>Goal:</strong> Reach the green line at the top of the hill as fast as possible. Please complete at least 5 rounds, but no more than 10.</p>
+    <p><strong>Goal:</strong> Reach the green line at the top of the hill as fast as possible. Please complete 5 rounds.</p>
     <p><strong>Controls:</strong> Use the <em>Left</em> and <em>Right Arrow</em> keys to accelerate the dot. </p>
     <p><strong>Hint:</strong> Build momentum by rocking back and forth!</p>
     <button id="startTrainingBtn">Start</button>
@@ -59,7 +59,7 @@
 
 
 <div class="instructions">
-  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete at least 5 rounds, but no more than 10.<br> </p>
+  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete 5 rounds.<br> </p>
   <p> <strong>Controls</strong><br> 
   Left / Right Arrow keys. </p> 
   <p> <strong>Hint</strong><br> Move the dot to gain enough momentum to reach the flag. </p>
@@ -116,6 +116,13 @@ function updateLapsDisplay() {
     lapsDiv.innerHTML = laps.length 
         ? "<strong>Lap Times</strong><br>" + laps.map((t,i)=>`Round ${i+1}: ${Math.floor(t)} s`).join("<br>") 
         : "";
+    if (laps.length >= 5) {
+      localStorage.setItem("acrobot_complete", "true");
+  
+      setTimeout(() => {
+        window.location.href = "/static/reward_page.html";
+      }, 750); // small delay so user sees final result
+    }
 }
 
 // --- Human action ---

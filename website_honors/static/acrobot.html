@@ -14,7 +14,7 @@
 <div id="instructionsModal">
   <div id="instructionsModalContent">
     <h3>Acrobot Instructions</h3>
-     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete at least 5 rounds, but no more than 10. </p>
+     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
     <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the middle joint.</p>
     <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
     <button id="startTrainingBtn">Start</button>
@@ -40,7 +40,7 @@
 <h3 id="timer">Time: 0.0 s</h3>
 
 <div class="instructions" id="instructionsBox">
-  <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete at least 5 rounds, but no more than 10. </p>
+  <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
   <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the middle joint.</p>
   <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
 </div>
@@ -94,6 +94,9 @@ function recordLap(time){
   laps.push(time);
   lapDiv.innerHTML =
     laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`).join("<br>");
+  if (localStorage.getItem("consentGiven") !== "true") {
+    window.location.href = "/static/consent.html";
+  }
 }
 
 function drawAcrobot(theta1,theta2){

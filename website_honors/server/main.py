@@ -92,7 +92,7 @@ def get_envs():
 
 @app.route("/")
 def root():
-    return redirect("/static/index.html")
+    return redirect("/static/consent.html")
 
 @app.route("/<path:filename>")
 def serve_static(filename):

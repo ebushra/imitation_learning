@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Study Complete</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f9f9f9;
+      margin-top: 50px;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      display: inline-block;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 500px;
+    }
+
+    h2 {
+      color: #4CAF50;
+    }
+
+    .code-box {
+      font-size: 18px;
+      margin: 20px 0;
+      padding: 10px;
+      border: 2px dashed #333;
+      background: #f0f0f0;
+      word-break: break-all;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>🎉 Thank You!</h2>
+
+  <p>You have successfully completed the study.</p>
+
+  <p><strong>Your completion code is:</strong></p>
+
+  <div class="code-box" id="codeBox">
+    Loading...
+  </div>
+
+  <button onclick="copyCode()">Copy Code</button>
+
+  <p style="margin-top:20px;">
+    Please copy this code and paste it into MTurk to receive your payment.
+  </p>
+</div>
+
+<script>
+function getOrCreateUserId() {
+  let id = localStorage.getItem("user_id");
+
+  if (!id) {
+    // fallback (shouldn't happen if backend already created one)
+    id = crypto.randomUUID();
+    localStorage.setItem("user_id", id);
+  }
+
+  return id;
+}
+
+const userId = getOrCreateUserId();
+document.getElementById("codeBox").textContent = userId;
+
+function copyCode() {
+  navigator.clipboard.writeText(userId);
+  alert("Code copied!");
+}
+</script>
+
+</body>
+</html>

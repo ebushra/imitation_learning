@@ -5,9 +5,20 @@
 <title>Acrobot Training</title>
 <style>
 body{ text-align:center; font-family:sans-serif; margin-top:20px; }
+
 canvas{ border:2px solid black; }
+
 button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
-.instructions{ font-size:12px; max-width:420px; margin:10px auto; text-align:left; border:1px solid #aaa; padding:8px; }
+
+.instructions{
+  font-size:12px;
+  max-width:420px;
+  margin:10px auto;
+  text-align:left;
+  border:1px solid #aaa;
+  padding:8px;
+}
+
 #stageInfo{ font-weight:bold; }
 
 #introBox{
@@ -17,12 +28,32 @@ button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
   padding:15px;
 }
 
+/* 🔥 GAME WRAPPER so we can overlay countdown */
+#gameWrapper{
+  position: relative;
+  width: 220px;
+  margin: 0 auto;
+}
+
+/* countdown overlay */
 #countdown{
   display:none;
+  position:absolute;
+  top:0;
+  left:0;
+  width:220px;
+  height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   font-size:64px;
   font-weight:bold;
-  margin-top:40px;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(2px);
+  z-index:10;
+  pointer-events:none;
 }
+
 </style>
 </head>
 
@@ -33,22 +64,24 @@ button{ padding:8px 16px; margin:8px; font-size:16px; cursor:pointer; }
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
   <p>This task has <strong>two training stages</strong>.</p>
-  <p>You will learn how to swing the Acrobot to reach a target line.</p>
+  <p>You will learn how to swing the bottom of the Acrobot to reach a target line.</p>
   <p>Each stage increases difficulty by moving the target higher.</p>
   <p>Try to reach the line as quickly as possible!</p>
   <button id="startBtn">Start Training</button>
 </div>
 
-<div id="countdown"></div>
-
 <div id="gameUI" style="display:none;">
-  <canvas id="canvas" width="220" height="220"></canvas>
+
+  <div id="gameWrapper">
+    <canvas id="canvas" width="220" height="220"></canvas>
+    <div id="countdown"></div>
+  </div>
 
   <h3 id="timer">Time: 0.0 s</h3>
   <h3 id="stageInfo"></h3>
 
-  <div class="instructions" id="instructionsBox">
-    <p><strong>Goal</strong><br>Reach the red line as fast as possible. Each stage moves the target higher.</p>
+  <div class="instructions">
+    <p><strong>Goal</strong><br>Reach the red line with the bottom joint as fast as possible. Each stage moves the target higher.</p>
     <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the blue middle joint.</p>
     <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
   </div>
@@ -66,7 +99,6 @@ const ctx = canvas.getContext("2d");
 
 const timerEl = document.getElementById("timer");
 const stageInfo = document.getElementById("stageInfo");
-
 const countdownEl = document.getElementById("countdown");
 
 const originY = 35;
@@ -108,8 +140,11 @@ function sleep(ms){
 }
 
 async function runCountdown(){
+
   document.getElementById("introBox").style.display = "none";
-  countdownEl.style.display = "block";
+  document.getElementById("gameUI").style.display = "block";
+
+  countdownEl.style.display = "flex";
 
   const seq = ["3", "2", "1", "Start"];
 
@@ -119,7 +154,6 @@ async function runCountdown(){
   }
 
   countdownEl.style.display = "none";
-  document.getElementById("gameUI").style.display = "block";
 
   started = true;
   resetStage();
@@ -138,7 +172,6 @@ function drawAcrobot(theta1,theta2){
  const x2=x1+L2*Math.sin(theta1+theta2);
  const y2=y1+L2*Math.cos(theta1+theta2);
 
- // links
  ctx.beginPath();
  ctx.moveTo(originX,originY);
  ctx.lineTo(x1,y1);
@@ -244,7 +277,6 @@ async function gameLoop(){
 }
 
 document.getElementById("startBtn").addEventListener("click", runCountdown);
-
 document.getElementById("resetBtn").addEventListener("click", resetStage);
 
 requestAnimationFrame(gameLoop);

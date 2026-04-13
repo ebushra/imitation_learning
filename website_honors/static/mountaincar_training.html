@@ -169,10 +169,11 @@ function getAction() {
 
 // --- DRAW PREVIEW ---
 /* =========================
-   PREVIEW ANIMATION (looping car motion)
+   PREVIEW ANIMATION (REAL PHYSICS)
 ========================= */
 
-let previewT = 0;
+let p_pos = -0.6;
+let p_vel = 0;
 
 function drawPreview(){
 
@@ -187,13 +188,11 @@ function drawPreview(){
     return h - ( (Math.sin(3*x)*0.45 + 0.55) * h*0.9 + h*0.05 );
   }
 
-  function frame(){
-
-    previewT += 0.02;
+  function step(){
 
     pctx.clearRect(0,0,w,h);
 
-    // --- terrain (UNCHANGED STYLE) ---
+    // --- terrain ---
     pctx.beginPath();
     for(let px=0; px<w; px++){
       const x = -1.2 + (px/w)*1.8;
@@ -206,12 +205,28 @@ function drawPreview(){
     pctx.lineWidth = 2;
     pctx.stroke();
 
-    // --- fake oscillating car position ---
-    // back-and-forth motion that gradually reaches the goal
-    const pos = -0.6 + Math.sin(previewT) * 0.6;
+    // --- SIMPLE POLICY (rock back and forth) ---
+    let action;
+    if(p_vel > 0) action = 2;   // push right
+    else action = 0;            // push left
 
-    const carX = previewX(pos);
-    const carY = previewY(pos);
+    // convert to force
+    const force = (action === 2 ? 1 : -1) * 0.001;
+
+    // --- REAL PHYSICS UPDATE ---
+    p_vel += force - 0.0025 * Math.cos(3 * p_pos);
+    p_vel = Math.max(Math.min(p_vel, 0.07), -0.07);
+
+    p_pos += p_vel;
+    p_pos = Math.max(Math.min(p_pos, 0.6), -1.2);
+
+    if(p_pos === -1.2 && p_vel < 0){
+      p_vel = 0;
+    }
+
+    // --- draw car ---
+    const carX = previewX(p_pos);
+    const carY = previewY(p_pos);
 
     pctx.beginPath();
     pctx.arc(carX, carY, 5, 0, Math.PI*2);
@@ -238,19 +253,19 @@ function drawPreview(){
     pctx.closePath();
     pctx.fill();
 
-    // --- success flash when reaching goal ---
-    if(pos >= goal){
-      pctx.fillStyle = "rgba(0,255,0,0.15)";
-      pctx.fillRect(0,0,w,h);
+    // --- reset when goal reached (loop) ---
+    if(p_pos >= goal){
+      p_pos = -0.6;
+      p_vel = 0;
     }
 
-    requestAnimationFrame(frame);
+    requestAnimationFrame(step);
   }
 
-  frame();
+  step();
 }
 
-// start animation
+// start
 drawPreview();
 
 // --- DRAW GAME ---

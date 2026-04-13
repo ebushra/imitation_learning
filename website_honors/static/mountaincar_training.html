@@ -184,8 +184,12 @@ function drawPreview(){
     return ((x + 1.2)/1.8) * w;
   }
 
+  const TOP_PAD = 25;
+  const BOT_PAD = 15;
+  
   function previewY(x){
-    return h - ( (Math.sin(3*x)*0.45 + 0.55) * h*0.75 + h*0.15 );
+    const terrain = Math.sin(3*x)*0.45 + 0.55;
+    return h - (BOT_PAD + terrain * (h - TOP_PAD - BOT_PAD));
   }
   function step(){
 

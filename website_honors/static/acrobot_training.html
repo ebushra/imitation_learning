@@ -172,9 +172,13 @@ function sleep(ms){
 }
 
 /* =========================
-   PREVIEW DRAW (fake screenshot)
+   PREVIEW ANIMATION (looping swing)
 ========================= */
-function drawPreview(){
+
+let previewT = 0;
+
+function drawPreviewFrame(){
+
   const w = previewCanvas.width;
   const h = previewCanvas.height;
 
@@ -183,11 +187,18 @@ function drawPreview(){
   const ox = w/2;
   const oy = 20;
 
-  const x1 = ox + 40;
-  const y1 = oy + 50;
+  // --- fake swinging motion ---
+  previewT += 0.05;
 
-  const x2 = x1 + 40;
-  const y2 = y1 + 40;
+  // smooth swing build-up
+  const theta1 = Math.sin(previewT) * 0.8;
+  const theta2 = Math.sin(previewT * 1.5) * 0.9;
+
+  const x1 = ox + 40*Math.sin(theta1);
+  const y1 = oy + 40*Math.cos(theta1);
+
+  const x2 = x1 + 40*Math.sin(theta1 + theta2);
+  const y2 = y1 + 40*Math.cos(theta1 + theta2);
 
   // links
   pctx.beginPath();
@@ -198,35 +209,46 @@ function drawPreview(){
   pctx.lineWidth=2;
   pctx.stroke();
 
-  // base joint
+  // base
   pctx.fillStyle="black";
   pctx.beginPath();
   pctx.arc(ox,oy,3,0,Math.PI*2);
   pctx.fill();
 
-  // 🔵 MIDDLE JOINT (BLUE)
+  // 🔵 middle joint
   pctx.fillStyle="blue";
   pctx.beginPath();
   pctx.arc(x1,y1,5,0,Math.PI*2);
   pctx.fill();
 
-  // end joint
+  // end
   pctx.fillStyle="black";
   pctx.beginPath();
   pctx.arc(x2,y2,3,0,Math.PI*2);
   pctx.fill();
 
   // target line
+  const targetY = 90;
+
   pctx.beginPath();
   pctx.setLineDash([4,4]);
   pctx.strokeStyle="red";
-  pctx.moveTo(0,90);
-  pctx.lineTo(w,90);
+  pctx.moveTo(0,targetY);
+  pctx.lineTo(w,targetY);
   pctx.stroke();
   pctx.setLineDash([]);
-}
-drawPreview();
 
+  // --- "success" flash when reaching line ---
+  if(y2 <= targetY){
+    pctx.fillStyle = "rgba(0,255,0,0.15)";
+    pctx.fillRect(0,0,w,h);
+  }
+
+  requestAnimationFrame(drawPreviewFrame);
+}
+
+// start animation
+drawPreviewFrame();
 /* =========================
    COUNTDOWN
 ========================= */

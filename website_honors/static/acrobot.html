@@ -90,6 +90,7 @@
 </div>
 
 <script>
+<script>
 
 const startBtn = document.getElementById("startTrainingBtn");
 const modal = document.getElementById("instructionsModal");
@@ -97,7 +98,6 @@ const modal = document.getElementById("instructionsModal");
 const popup = document.getElementById("endPopup");
 const goNextGameBtn = document.getElementById("goNextGameBtn");
 const moreDataBtn = document.getElementById("moreDataBtn");
-
 const continueBtn = document.getElementById("continueBtn");
 
 startBtn.addEventListener("click", async () => {
@@ -131,14 +131,16 @@ document.addEventListener('keyup',e=>{
   if(e.key in keys) keys[e.key]=false;
 });
 
+let state=null;
 let startTime = performance.now();
 let laps = [];
 
-let dataMode = false;
+let paused = false;   // 🔥 NEW
 
 const lapDiv = document.createElement("div");
 document.body.appendChild(lapDiv);
 
+/* ---------------- LAP ---------------- */
 function recordLap(time){
   laps.push(time);
 
@@ -153,20 +155,23 @@ function recordLap(time){
 
 /* ---------------- POPUP ---------------- */
 function showPopup(){
+  paused = true;              // 🔥 FREEZE EVERYTHING
   popup.style.display = "flex";
 }
 
+/* next game */
 goNextGameBtn.onclick = () => {
   window.location.href = "/static/mountaincar_training.html";
 };
 
+/* more data */
 moreDataBtn.onclick = () => {
   popup.style.display = "none";
-  dataMode = true;
+  paused = false;            // 🔥 UNFREEZE GAME
   continueBtn.style.display = "inline-block";
 };
 
-/* ---------------- CONTINUE BUTTON ---------------- */
+/* continue button */
 continueBtn.onclick = () => {
   window.location.href = "/static/mountaincar_training.html";
 };
@@ -184,6 +189,7 @@ async function reset(){
 /* ---------------- STEP ---------------- */
 async function step(){
 
+  if(paused) return;        // 🔥 FREEZE PHYSICS
   if(!state) return;
 
   let action=1;
@@ -252,10 +258,14 @@ function drawAcrobot(theta1,theta2){
 /* ---------------- LOOP ---------------- */
 async function gameLoop(){
 
-  await step();
+  if(!paused){
+    await step();
+  }
 
-  timerEl.textContent =
-    "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
+  if(!paused){
+    timerEl.textContent =
+      "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
+  }
 
   requestAnimationFrame(gameLoop);
 }
@@ -264,6 +274,8 @@ async function gameLoop(){
 resetBtn.addEventListener("click",reset);
 
 reset().then(()=>requestAnimationFrame(gameLoop));
+
+</script>
 
 </script>
 

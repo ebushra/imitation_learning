@@ -1,50 +1,100 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MountainCar Training</title>
-  <style>
-    body { text-align: center; font-family: sans-serif; margin-top: 20px; }
-    .game-container { display: inline-block; border: 2px solid black; padding: 8px; position: relative; }
-    canvas { display: block; }
-    button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
-    #timer { font-size: 16px; margin-top: 8px; }
-    #stageInfo { font-size: 16px; margin-top: 8px; font-weight: bold; }
-  </style>
-</head>
-<body>
-
-<div id="instructionsModal">
-  <div id="instructionsModalContent">
-    <h3>MountainCar Training Instructions</h3>
-    <p><strong>Goal:</strong> Reach the green line at the top of the hill for each stage.</p>
-    <p><strong>Controls:</strong> Use the <em>Left</em> and <em>Right Arrow</em> keys to accelerate the car.</p>
-    <p><strong>Hint:</strong> Build momentum by rocking back and forth!</p>
-    <button id="startTrainingBtn">Start Training</button>
-  </div>
-</div>
+<title>MountainCar Training</title>
 
 <style>
-  #instructionsModal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
-    z-index: 10;
-  }
-  #instructionsModalContent {
-    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
-  }
-  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
+body{
+  text-align:center;
+  font-family:sans-serif;
+  margin-top:20px;
+}
+
+canvas{
+  border:2px solid black;
+}
+
+button{
+  padding:8px 16px;
+  margin:8px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+#introBox{
+  max-width:450px;
+  margin:20px auto;
+  border:2px solid #444;
+  padding:15px;
+}
+
+#previewCanvas{
+  border:1px solid #aaa;
+  margin:10px auto;
+  display:block;
+  background:#fff;
+}
+
+#gameWrapper{
+  position: relative;
+  width: 300px;
+  height: 250px;
+  margin: 0 auto;
+}
+
+#countdown{
+  display:none;
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:64px;
+  font-weight:bold;
+  color: rgba(0,0,0,0.85);
+
+  z-index:999;
+  pointer-events:none;
+  text-shadow: 1px 1px 2px white;
+}
+
 </style>
+</head>
+
+<body>
 
 <h2>MountainCar Training</h2>
 
-<div class="game-container">
-  <canvas id="overlay" width="300" height="250"></canvas>
+<!-- INTRO -->
+<div id="introBox">
+  <p><strong>Welcome!</strong></p>
+  <p>Learn to build momentum and reach the goal at the top of the hill.</p>
+
+  <canvas id="previewCanvas" width="300" height="120"></canvas>
+
+  <p>Use left/right arrows to accelerate.</p>
+  <button id="startBtn">Start Training</button>
 </div>
 
-<h3 id="timer">Time: 0 s</h3>
-<h3 id="stageInfo"></h3>
+<!-- GAME -->
+<div id="gameUI" style="display:none;">
 
-<button id="resetBtn">Restart Stage</button>
+  <div id="gameWrapper">
+    <canvas id="overlay" width="300" height="250"></canvas>
+    <div id="countdown"></div>
+  </div>
+
+  <h3 id="timer">Time: 0 s</h3>
+  <h3 id="stageInfo"></h3>
+
+  <button id="resetBtn">Restart Stage</button>
+
+</div>
 
 <script>
 if (localStorage.getItem("consentGiven") !== "true") {
@@ -52,14 +102,19 @@ if (localStorage.getItem("consentGiven") !== "true") {
 }
 
 const overlay = document.getElementById("overlay");
-const resetBtn = document.getElementById("resetBtn");
+const ctx = overlay.getContext("2d");
+const previewCanvas = document.getElementById("previewCanvas");
+const pctx = previewCanvas.getContext("2d");
+const countdownEl = document.getElementById("countdown");
+
 const API_BASE = "/mountaincar";
+
 let keysPressed = { ArrowLeft:false, ArrowRight:false };
 let stageIndex = 0;
 let stageStartTime = null;
-let trainingPassed = false;
+let started = false;
 
-// --- Training stages ---
+// --- Training stages (UNCHANGED) ---
 const TRAINING_STAGES = [
   { goalX: 0.3, duration: 20 },
   { goalX: 0.45, duration: 25 }
@@ -75,130 +130,178 @@ function worldToCanvasX(x) { return ((x + 1.2)/1.8) * overlay.width; }
 function worldToCanvasY(y) { return overlay.height - (y*overlay.height*0.9 + overlay.height*0.05); }
 
 // --- Timer ---
-function getCurrentTime() { return stageStartTime ? Math.floor((performance.now()-stageStartTime)/1000) : 0; }
-function updateTimerDisplay() { document.getElementById("timer").textContent = `Time: ${getCurrentTime()} s`; }
+function getCurrentTime() {
+  return (started && stageStartTime)
+    ? Math.floor((performance.now()-stageStartTime)/1000)
+    : 0;
+}
+
+function updateTimerDisplay() {
+  document.getElementById("timer").textContent = `Time: ${getCurrentTime()} s`;
+}
 
 // --- Stage text ---
 function updateStageText() {
-    const s = TRAINING_STAGES[stageIndex];
-    document.getElementById("stageInfo").textContent = `Stage ${stageIndex+1}: Reach x ≥ ${s.goalX} in ${s.duration}s`;
+  const s = TRAINING_STAGES[stageIndex];
+  document.getElementById("stageInfo").textContent =
+    `Stage ${stageIndex+1}: Reach x ≥ ${s.goalX} in ${s.duration}s`;
 }
 
-// --- Human action ---
+// --- Action ---
 function getAction() {
-    if(keysPressed.ArrowLeft) return 0;
-    if(keysPressed.ArrowRight) return 2;
-    return 1;
+  if(keysPressed.ArrowLeft) return 0;
+  if(keysPressed.ArrowRight) return 2;
+  return 1;
 }
 
-// --- Draw overlay ---
+// --- DRAW PREVIEW ---
+function drawPreview(){
+  const w = previewCanvas.width;
+  const h = previewCanvas.height;
+
+  pctx.clearRect(0,0,w,h);
+
+  pctx.beginPath();
+  for(let px=0; px<w; px++){
+    const x = -1.2 + (px/w)*1.8;
+    const py = h - (mountainY(x)*h*0.8);
+    if(px===0) pctx.moveTo(px,py);
+    else pctx.lineTo(px,py);
+  }
+  pctx.stroke();
+
+  pctx.fillStyle="red";
+  pctx.beginPath();
+  pctx.arc(w*0.3, h*0.6, 5, 0, Math.PI*2);
+  pctx.fill();
+}
+drawPreview();
+
+// --- DRAW GAME ---
 function drawOverlay(state, goalX) {
-    const ctx = overlay.getContext("2d");
-    ctx.clearRect(0,0,overlay.width, overlay.height);
+  ctx.clearRect(0,0,overlay.width, overlay.height);
 
-    // Terrain
-    ctx.beginPath();
-    for(let px=0; px<overlay.width; px++) {
-        const x = -1.2 + (px/overlay.width)*1.8;
-        const py = worldToCanvasY(mountainY(x));
-        if(px===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-    }
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  ctx.beginPath();
+  for(let px=0; px<overlay.width; px++) {
+    const x = -1.2 + (px/overlay.width)*1.8;
+    const py = worldToCanvasY(mountainY(x));
+    if(px===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
 
-    // Car as dot
-    
-    const pos = state[0];
-    
-    const carX = worldToCanvasX(pos);
-    const carY = worldToCanvasY(mountainY(pos));
-    ctx.beginPath();
-    ctx.arc(carX, carY, 5, 0, 2*Math.PI);
-    ctx.fillStyle = "red";
-    ctx.fill();
+  const pos = state[0];
+  const carX = worldToCanvasX(pos);
+  const carY = worldToCanvasY(mountainY(pos));
 
-    // Goal flag
-    const fx = worldToCanvasX(goalX);
-    const fy = worldToCanvasY(mountainY(goalX));
-    ctx.strokeStyle = "green";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(fx, fy);
-    ctx.lineTo(fx, fy-30);
-    ctx.stroke();
-    ctx.fillStyle = "green";
-    ctx.beginPath();
-    ctx.moveTo(fx, fy-30);
-    ctx.lineTo(fx+10, fy-20);
-    ctx.lineTo(fx, fy-10);
-    ctx.closePath();
-    ctx.fill();
+  ctx.beginPath();
+  ctx.arc(carX, carY, 5, 0, 2*Math.PI);
+  ctx.fillStyle = "red";
+  ctx.fill();
+
+  const fx = worldToCanvasX(goalX);
+  const fy = worldToCanvasY(mountainY(goalX));
+
+  ctx.strokeStyle = "green";
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.lineTo(fx, fy-30);
+  ctx.stroke();
 }
 
-// --- Reset stage ---
+// --- COUNTDOWN ---
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function runCountdown(){
+  document.getElementById("introBox").style.display="none";
+  document.getElementById("gameUI").style.display="block";
+
+  await new Promise(r=>requestAnimationFrame(r));
+
+  countdownEl.style.display="flex";
+
+  const seq=["3","2","1","Start"];
+  for(let s of seq){
+    countdownEl.textContent=s;
+    await sleep(1000);
+  }
+
+  countdownEl.style.display="none";
+
+  started = true;
+  await resetStage();
+  requestAnimationFrame(trainingStep);
+}
+
+// --- RESET (UNCHANGED except start time control) ---
 async function resetStage() {
-    const res = await fetch(`${API_BASE}/reset`, {
-        method:"POST", 
-        headers:{"Content-Type":"application/json"}, 
-        body:JSON.stringify({training:true}),
-        credentials: "include"
-    });
-    const data = await res.json();
+  const res = await fetch(`${API_BASE}/reset`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({training:true}),
+    credentials: "include"
+  });
+
+  const data = await res.json();
+
+  if(started){
     stageStartTime = performance.now();
-    drawOverlay(data.state, TRAINING_STAGES[stageIndex].goalX);
+  }
+
+  drawOverlay(data.state, TRAINING_STAGES[stageIndex].goalX);
 }
 
-// --- Training loop ---
+// --- LOOP (UNCHANGED LOGIC) ---
 async function trainingStep() {
-    const action = getAction();
-    const res = await fetch(`${API_BASE}/step`, {
-        method:"POST", 
-        headers:{"Content-Type":"application/json"}, 
-        body:JSON.stringify({action, training:true}),
-        credentials: "include"
-    });
-    const data = await res.json();
 
-    drawOverlay(data.state, TRAINING_STAGES[stageIndex].goalX);
-    updateTimerDisplay();
-    updateStageText();
+  if(!started) return;
 
-    const stage = TRAINING_STAGES[stageIndex];
+  const action = getAction();
 
-    if (data.state[0] >= stage.goalX) {
-        stageIndex++;
-        if(stageIndex >= TRAINING_STAGES.length) {
-            trainingPassed = true;
-            localStorage.setItem("mountaincarUnlocked","true");
-            alert("Training complete! Full MountainCar unlocked.");
-            window.location.href = "/mountaincar.html";
-            return;
-        }
-        alert(`Stage ${stageIndex} complete! Next goal x ≥ ${TRAINING_STAGES[stageIndex].goalX}`);
-        await resetStage();
-        trainingStep(); // restart loop
-        return;
+  const res = await fetch(`${API_BASE}/step`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action, training:true}),
+    credentials: "include"
+  });
+
+  const data = await res.json();
+
+  drawOverlay(data.state, TRAINING_STAGES[stageIndex].goalX);
+  updateTimerDisplay();
+  updateStageText();
+
+  const stage = TRAINING_STAGES[stageIndex];
+
+  if (data.state[0] >= stage.goalX) {
+    stageIndex++;
+
+    if(stageIndex >= TRAINING_STAGES.length) {
+      localStorage.setItem("mountaincarUnlocked","true");
+      alert("Training complete!");
+      window.location.href = "/mountaincar.html";
+      return;
     }
 
-    if(getCurrentTime() > stage.duration) {
-        alert("Time expired! Try building more momentum.");
-        await resetStage();
-        trainingStep();
-        return;
-    }
+    alert(`Next stage`);
+    await resetStage();
+    requestAnimationFrame(trainingStep);
+    return;
+  }
 
-    if(!trainingPassed) requestAnimationFrame(trainingStep);
+  if(getCurrentTime() > stage.duration) {
+    alert("Time expired!");
+    await resetStage();
+    requestAnimationFrame(trainingStep);
+    return;
+  }
+
+  requestAnimationFrame(trainingStep);
 }
 
-// --- Start training button ---
-document.getElementById("startTrainingBtn").addEventListener("click", () => {
-    document.getElementById("instructionsModal").style.display = 'none';
-    resetStage().then(trainingStep);
-});
+// --- BUTTONS ---
+document.getElementById("startBtn").addEventListener("click", runCountdown);
+document.getElementById("resetBtn").addEventListener("click", resetStage);
 
-// --- Buttons ---
-resetBtn.addEventListener("click", resetStage);
 </script>
 
 </body>

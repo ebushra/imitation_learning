@@ -117,6 +117,7 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
   alert("You must complete training first.");
   window.location.href = "/static/mountaincar_training.html";
 }
+let loopRunning = false;
 let paused = true;
 let pauseStart = 0;
 let pausedTime = 0;
@@ -285,11 +286,21 @@ async function resetStage() {
 }
 
 // ---------------- LOOP ----------------
+function startLoop() {
+  if (loopRunning) return;   // prevent duplicates
+  loopRunning = true;
+  requestAnimationFrame(loop);
+}
 let last = 0;
 const STEP = 50;
 
 async function loop(t) {
-  if (!running || paused) {
+  if (!running) {
+    loopRunning = false;
+    return;
+  }
+
+  if (paused) {
     requestAnimationFrame(loop);
     return;
   }
@@ -325,18 +336,18 @@ document.getElementById("startTrainingBtn").onclick = async () => {
   paused = false;
   await resetStage();
   running = true;
-  requestAnimationFrame(loop);
+  startLoop();
 };
 
 document.getElementById("giveDataBtn").onclick = async () => {
   dataModal.style.display = "none";
-  dataCollectionMode = true;
   finishBtn.style.display = "inline-block";
 
   paused = false;
   await resetStage();
+
   running = true;
-  requestAnimationFrame(loop);
+  startLoop(); // SAFE now
 };
 
 document.getElementById("finishNowBtn").onclick = () => {

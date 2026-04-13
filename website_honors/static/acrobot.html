@@ -2,13 +2,43 @@
 <html>
 <head>
   <title>Acrobot</title>
+
   <style>
     body { text-align: center; font-family: sans-serif; margin-top: 20px; }
-    canvas { border: 2px solid black; }
+
+    canvas {
+      border: 2px solid black;
+      display: block;
+      margin: auto;
+    }
+
     button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
+
     .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; }
 
-    #countdown{
+    /* 🔵 canvas wrapper for overlay */
+    #gameWrapper {
+      position: relative;
+      width: 220px;
+      margin: auto;
+    }
+
+    /* ⏱ timer overlay */
+    #timer {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      font-weight: bold;
+      background: rgba(255,255,255,0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* countdown */
+    #countdown {
       font-size: 64px;
       font-weight: bold;
       margin: 10px;
@@ -16,14 +46,15 @@
     }
   </style>
 </head>
+
 <body>
 
 <div id="instructionsModal">
   <div id="instructionsModalContent">
     <h3>Acrobot Instructions</h3>
-     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
-    <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the middle joint.</p>
-    <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
+     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds.</p>
+    <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys.</p>
+    <p><strong>Hint</strong><br>Pump the swing.</p>
     <button id="startTrainingBtn">Start</button>
   </div>
 </div>
@@ -31,26 +62,29 @@
 <style>
   #instructionsModal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
     z-index: 10;
   }
+
   #instructionsModalContent {
-    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
+    background: white; padding: 20px; border-radius: 6px;
+    max-width: 400px; text-align: left;
   }
-  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
 </style>
 
 <h2>Acrobot</h2>
 
 <div id="countdown"></div>
 
-<canvas id="acrobotCanvas" width="220" height="220"></canvas>
+<!-- 🔵 GAME WRAPPER (needed for overlay timer) -->
+<div id="gameWrapper">
+  <canvas id="acrobotCanvas" width="220" height="220"></canvas>
+  <div id="timer">Time: 0.0 s</div>
+</div>
 
-<h3 id="timer">Time: 0.0 s</h3>
-
-<div class="instructions" id="instructionsBox">
-  <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
-  <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right</em> Arrow keys to apply torque to the middle joint.</p>
+<div class="instructions">
+  <p><strong>Goal</strong><br>Reach the red line as fast as possible.</p>
 </div>
 
 <button id="resetBtn">Restart</button>
@@ -71,6 +105,7 @@ const countdownEl = document.getElementById("countdown");
 const canvas = document.getElementById("acrobotCanvas");
 const ctx = canvas.getContext("2d");
 const timerEl = document.getElementById("timer");
+
 const resetBtn = document.getElementById("resetBtn");
 
 // ---------------- ENV ----------------
@@ -90,11 +125,11 @@ document.addEventListener('keyup',e=>{
 });
 
 // ---------------- STATE ----------------
-let startTime = performance.now();
-let laps = [];
 let state = null;
 let resetting = false;
 let started = false;
+
+let startTime = 0; // ⏱ frozen until countdown ends
 
 // ---------------- COUNTDOWN ----------------
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -114,6 +149,9 @@ async function runCountdown(){
   await sleep(600);
 
   countdownEl.textContent = "";
+
+  // ⏱ START TIMER ONLY NOW
+  startTime = performance.now();
   started = true;
 }
 
@@ -123,17 +161,6 @@ startBtn.addEventListener("click", async () => {
   await reset();
   await runCountdown();
 });
-
-// ---------------- LAPS ----------------
-function recordLap(time){
-  laps.push(time);
-  if (laps.length >= 5) {
-    localStorage.setItem("acrobot_complete", "true");
-    setTimeout(() => {
-      window.location.href = "/static/mountaincar_training.html";
-    }, 750);
-  }
-}
 
 // ---------------- DRAW ----------------
 function drawAcrobot(theta1,theta2){
@@ -157,7 +184,7 @@ function drawAcrobot(theta1,theta2){
   ctx.lineWidth=2;
   ctx.stroke();
 
-  // joints
+  // base + end
   ctx.fillStyle="black";
   [[originX,originY],[x2,y2]].forEach(([x,y])=>{
     ctx.beginPath();
@@ -165,7 +192,7 @@ function drawAcrobot(theta1,theta2){
     ctx.fill();
   });
 
-  // 🔵 MIDDLE JOINT (BLUE)
+  // 🔵 middle joint
   ctx.fillStyle="blue";
   ctx.beginPath();
   ctx.arc(x1,y1,4,0,Math.PI*2);
@@ -192,7 +219,6 @@ async function reset(){
   const data = await res.json();
 
   state = data.state;
-  startTime = performance.now();
 
   resetting = false;
 }
@@ -211,13 +237,7 @@ async function step(){
 
   state = data.state;
 
-  const {y2} = drawAcrobot(state[0],state[1]);
-
-  if(y2 <= targetY){
-    const lapTime = (performance.now()-startTime)/1000;
-    recordLap(lapTime);
-    await reset();
-  }
+  drawAcrobot(state[0],state[1]);
 }
 
 // ---------------- LOOP ----------------
@@ -225,8 +245,11 @@ async function gameLoop(){
 
   await step();
 
-  timerEl.textContent =
-    "Time: " + Math.floor((performance.now() - startTime)/1000) + " s";
+  // ⏱ only updates AFTER countdown starts
+  if(started){
+    timerEl.textContent =
+      "Time: " + ((performance.now() - startTime)/1000).toFixed(1) + " s";
+  }
 
   requestAnimationFrame(gameLoop);
 }

@@ -185,9 +185,8 @@ function drawPreview(){
   }
 
   function previewY(x){
-    return h - ( (Math.sin(3*x)*0.45 + 0.55) * h*0.9 + h*0.05 );
+    return h - ( (Math.sin(3*x)*0.45 + 0.55) * h*0.75 + h*0.15 );
   }
-
   function step(){
 
     pctx.clearRect(0,0,w,h);

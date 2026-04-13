@@ -159,6 +159,7 @@ function recordLap(time){
 function showPopup(){
   frozen = true;
   popup.style.display = "flex";
+  startTime = performance.now(); 
 }
 
 goNextGameBtn.onclick = () => {
@@ -170,6 +171,7 @@ moreDataBtn.onclick = () => {
   frozen = false;
   dataMode = true;
   continueBtn.style.display = "inline-block";
+  startTime = performance.now(); 
 };
 
 /* ---------------- CONTINUE BUTTON ---------------- */
@@ -261,7 +263,9 @@ async function gameLoop(){
   await step();
 
   timerEl.textContent =
-    "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
+  frozen
+    ? "Time: 0.0 s"
+    : "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
 
   requestAnimationFrame(gameLoop);
 }

@@ -1,368 +1,228 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Acrobot</title>
+  <title>Acrobot</title>
+  <style>
+    body { text-align: center; font-family: sans-serif; margin-top: 20px; }
 
-<style>
-body{
-  text-align:center;
-  font-family:sans-serif;
-  margin-top:20px;
-}
+    canvas { border: 2px solid black; }
 
-canvas{
-  border:2px solid black;
-}
+    button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
 
-button{
-  padding:8px 16px;
-  margin:8px;
-  font-size:16px;
-  cursor:pointer;
-}
+    .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; }
 
-.instructions{
-  font-size:12px;
-  max-width:420px;
-  margin:10px auto;
-  text-align:left;
-  border:1px solid #aaa;
-  padding:8px;
-}
+    /* only addition: wrapper for timer overlay */
+    #gameWrapper {
+      position: relative;
+      width: 220px;
+      margin: 0 auto;
+    }
 
-#introBox{
-  max-width:450px;
-  margin:20px auto;
-  border:2px solid #444;
-  padding:15px;
-}
-
-/* preview */
-#previewCanvas{
-  border:1px solid #aaa;
-  margin:10px auto;
-  display:block;
-}
-
-/* game wrapper */
-#gameWrapper{
-  position: relative;
-  width: 220px;
-  margin: 0 auto;
-}
-
-/* timer OVERLAY (like training style) */
-#timer{
-  position:absolute;
-  top:6px;
-  left:50%;
-  transform:translateX(-50%);
-  font-size:14px;
-  font-weight:bold;
-  background:rgba(255,255,255,0.8);
-  padding:2px 6px;
-  border-radius:4px;
-  pointer-events:none;
-}
-
-/* countdown */
-#countdown{
-  display:none;
-  position:absolute;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:64px;
-  font-weight:bold;
-  z-index:999;
-  pointer-events:none;
-}
-</style>
+    #timer {
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      font-weight: bold;
+      background: rgba(255,255,255,0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+  </style>
 </head>
 
 <body>
 
-<h2>Acrobot Training</h2>
-
-<div id="introBox">
-  <p><strong>Welcome!</strong></p>
-  <p>This task has <strong>two training stages</strong>. You will learn how to swing the bottom of the Acrobot.</p>
-
-  <canvas id="previewCanvas" width="220" height="120"></canvas>
-
-  <p>Try to reach the red line as fast as possible.</p>
-
-  <button id="startBtn">Start Training</button>
+<div id="instructionsModal">
+  <div id="instructionsModalContent">
+    <h3>Acrobot Instructions</h3>
+    <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds.</p>
+    <p><strong>Controls</strong><br>Use Left / Right arrows.</p>
+    <button id="startTrainingBtn">Start</button>
+  </div>
 </div>
 
-<div id="gameUI" style="display:none;">
+<style>
+  #instructionsModal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10;
+  }
 
-  <div id="gameWrapper">
-    <canvas id="canvas" width="220" height="220"></canvas>
-    <div id="timer">Time: 0.0 s</div>
-    <div id="countdown"></div>
-  </div>
+  #instructionsModalContent {
+    background: white; padding: 20px; border-radius: 6px;
+    max-width: 400px; text-align: left;
+  }
+</style>
 
-  <h3 id="stageInfo"></h3>
+<h2>Acrobot</h2>
 
-  <div class="instructions">
-    <p><strong>Goal</strong><br>Reach the red line as fast as possible.</p>
-    <p><strong>Controls</strong><br>Left / Right arrow keys apply torque to the blue middle joint.</p>
-  </div>
-
-  <button id="resetBtn">Restart Stage</button>
+<div id="gameWrapper">
+  <canvas id="acrobotCanvas" width="220" height="220"></canvas>
+  <div id="timer">Time: 0.0 s</div>
 </div>
+
+<h3 id="timerHidden" style="display:none;"></h3>
+
+<div class="instructions">
+  <p><strong>Goal</strong><br>Reach the red line as fast as possible.</p>
+</div>
+
+<button id="resetBtn">Restart</button>
 
 <script>
-if (localStorage.getItem("consentGiven") !== "true") {
-  window.location.href = "/static/consent.html";
+
+// --- GATE ---
+if(!localStorage.getItem("acrobot_training_complete")){
+  alert("You must complete Acrobot training first!");
+  window.location.href = "/static/acrobot_training.html";
 }
 
-const canvas = document.getElementById("canvas");
+// --- UI ---
+const startBtn = document.getElementById("startTrainingBtn");
+const modal = document.getElementById("instructionsModal");
+
+const canvas = document.getElementById("acrobotCanvas");
 const ctx = canvas.getContext("2d");
 
-const previewCanvas = document.getElementById("previewCanvas");
-const pctx = previewCanvas.getContext("2d");
-
 const timerEl = document.getElementById("timer");
-const stageInfo = document.getElementById("stageInfo");
-const countdownEl = document.getElementById("countdown");
 
+// --- STATE ---
 const originY = 35;
 const L1 = 60;
 const L2 = 60;
+const targetY = 55;
 
-const API_BASE = "/acrobot";
+const keys = { ArrowLeft:false, ArrowRight:false };
 
 let state=null;
 let resetting=false;
 let started=false;
 
-let stageStartTime=0;
+// 🔥 IMPORTANT FIX: timer starts ONLY here
+let startTime = null;
 
-const keys={ArrowLeft:false,ArrowRight:false};
-
+// --- INPUT ---
 document.addEventListener("keydown",e=>{
- if(e.key in keys) keys[e.key]=true;
+  if(e.key in keys) keys[e.key]=true;
 });
 
 document.addEventListener("keyup",e=>{
- if(e.key in keys) keys[e.key]=false;
+  if(e.key in keys) keys[e.key]=false;
 });
 
 function getAction(){
- if(keys.ArrowLeft) return 0;
- if(keys.ArrowRight) return 2;
- return 1;
+  if(keys.ArrowLeft) return 0;
+  if(keys.ArrowRight) return 2;
+  return 1;
 }
 
-const STAGES=[
- {targetY:120,text:"Stage 1: Tip Over Line"},
- {targetY:80,text:"Stage 2: Tip Over Higher Line"}
-];
+// --- RESET ---
+async function reset(){
 
-let stageIndex=0;
+  resetting = true;
 
-/* =========================
-   RESET (NO TIMER HERE NOW)
-========================= */
-async function resetStage(){
+  const res = await fetch("/acrobot/reset",{method:"POST", credentials:"include"});
+  const data = await res.json();
 
- resetting=true;
+  state = data.state;
 
- const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
- const data = await res.json();
-
- state = data.state;
-
- resetting=false;
+  resetting = false;
 }
 
-/* =========================
-   COUNTDOWN (FREEZES TIMER)
-========================= */
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+// --- START ---
+startBtn.addEventListener("click", async () => {
+  modal.style.display = "none";
 
-async function runCountdown(){
+  await reset();
 
-  document.getElementById("introBox").style.display = "none";
-  document.getElementById("gameUI").style.display = "block";
-
-  await new Promise(r => requestAnimationFrame(r));
-
-  countdownEl.style.display = "flex";
-
-  for(let v of ["3","2","1","Start"]){
-    countdownEl.textContent = v;
-    await sleep(1000);
-  }
-
-  countdownEl.style.display = "none";
-
-  // 🔥 START TIMER ONLY HERE
-  stageStartTime = performance.now();
+  // 🔥 DO NOT START TIMER YET
+  startTime = performance.now();
   started = true;
+});
 
-  resetStage();
-}
-
-/* =========================
-   DRAW
-========================= */
+// --- DRAW ---
 function draw(theta1,theta2){
 
- const w=canvas.width;
- ctx.clearRect(0,0,w,w);
+  const w = canvas.width;
+  ctx.clearRect(0,0,w,w);
 
- const ox=w/2;
+  const ox = w/2;
 
- const x1=ox+L1*Math.sin(theta1);
- const y1=originY+L1*Math.cos(theta1);
+  const x1 = ox + L1*Math.sin(theta1);
+  const y1 = originY + L1*Math.cos(theta1);
 
- const x2=x1+L2*Math.sin(theta1+theta2);
- const y2=y1+L2*Math.cos(theta1+theta2);
+  const x2 = x1 + L2*Math.sin(theta1+theta2);
+  const y2 = y1 + L2*Math.cos(theta1+theta2);
 
- ctx.beginPath();
- ctx.moveTo(ox,originY);
- ctx.lineTo(x1,y1);
- ctx.lineTo(x2,y2);
- ctx.strokeStyle="black";
- ctx.lineWidth=2;
- ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ox,originY);
+  ctx.lineTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.strokeStyle="black";
+  ctx.lineWidth=2;
+  ctx.stroke();
 
- ctx.fillStyle="black";
- [[ox,originY],[x2,y2]].forEach(([x,y])=>{
-   ctx.beginPath();
-   ctx.arc(x,y,3,0,Math.PI*2);
-   ctx.fill();
- });
+  ctx.fillStyle="black";
+  [[ox,originY],[x2,y2]].forEach(([x,y])=>{
+    ctx.beginPath();
+    ctx.arc(x,y,3,0,Math.PI*2);
+    ctx.fill();
+  });
 
- // 🔵 middle joint
- ctx.fillStyle="blue";
- ctx.beginPath();
- ctx.arc(x1,y1,4,0,Math.PI*2);
- ctx.fill();
+  // 🔵 middle joint (FIXED)
+  ctx.fillStyle="blue";
+  ctx.beginPath();
+  ctx.arc(x1,y1,4,0,Math.PI*2);
+  ctx.fill();
 
- const ty=STAGES[stageIndex].targetY;
+  ctx.beginPath();
+  ctx.setLineDash([5,5]);
+  ctx.strokeStyle="red";
+  ctx.moveTo(0,targetY);
+  ctx.lineTo(w,targetY);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
- ctx.beginPath();
- ctx.setLineDash([5,5]);
- ctx.strokeStyle="red";
- ctx.moveTo(0,ty);
- ctx.lineTo(w,ty);
- ctx.stroke();
- ctx.setLineDash([]);
-
- return y2;
+  return y2;
 }
 
-/* =========================
-   STEP
-========================= */
-function updateUI(){
-  if(started){
-    timerEl.textContent =
-      "Time: " + ((performance.now()-stageStartTime)/1000).toFixed(1) + " s";
-  }
-}
-
-function checkTraining(tipY){
-
- if(tipY <= STAGES[stageIndex].targetY){
-
-   stageIndex++;
-
-   if(stageIndex >= STAGES.length){
-
-     localStorage.setItem("acrobot_training_complete","1");
-
-     alert("Training complete!");
-     window.location.href="/static/acrobot.html";
-
-   } else {
-     alert("Next stage");
-     resetStage();
-     stageStartTime = performance.now(); // restart timer per stage
-   }
- }
-}
-
+// --- STEP ---
 async function step(){
 
- if(!started || resetting || !state) return;
+  if(!started || resetting || !state) return;
 
- let action=1;
- if(keys.ArrowLeft) action=0;
- if(keys.ArrowRight) action=2;
+  let action = 1;
+  if(keys.ArrowLeft) action = 0;
+  if(keys.ArrowRight) action = 2;
 
- const res = await fetch(`${API_BASE}/step/${action}`,{method:"POST"});
- const data = await res.json();
+  const res = await fetch(`/acrobot/step/${action}`,{method:"POST", credentials:"include"});
+  const data = await res.json();
 
- state=data.state;
+  state = data.state;
 
- const tipY = draw(state[0],state[1]);
-
- updateUI();
- checkTraining(tipY);
+  draw(state[0],state[1]);
 }
 
-/* =========================
-   LOOP
-========================= */
+// --- LOOP ---
 async function loop(){
- await step();
- requestAnimationFrame(loop);
+  await step();
+
+  // 🔥 FIX: timer only runs if started
+  if(started && startTime){
+    timerEl.textContent =
+      "Time: " + ((performance.now()-startTime)/1000).toFixed(1) + " s";
+  }
+
+  requestAnimationFrame(loop);
 }
 
-/* =========================
-   PREVIEW
-========================= */
-function drawPreview(){
- const w=previewCanvas.width;
- const h=previewCanvas.height;
+document.getElementById("resetBtn").addEventListener("click",reset);
 
- pctx.clearRect(0,0,w,h);
-
- const ox=w/2;
- const oy=20;
-
- const x1=ox+40;
- const y1=oy+40;
- const x2=x1+40;
- const y2=y1+30;
-
- pctx.beginPath();
- pctx.moveTo(ox,oy);
- pctx.lineTo(x1,y1);
- pctx.lineTo(x2,y2);
- pctx.stroke();
-
- pctx.fillStyle="blue";
- pctx.beginPath();
- pctx.arc(x1,y1,5,0,Math.PI*2);
- pctx.fill();
-
- pctx.beginPath();
- pctx.setLineDash([4,4]);
- pctx.strokeStyle="red";
- pctx.moveTo(0,80);
- pctx.lineTo(w,80);
- pctx.stroke();
- pctx.setLineDash([]);
-}
-drawPreview();
-
-/* =========================
-   INIT
-========================= */
-document.getElementById("startBtn").addEventListener("click",runCountdown);
-document.getElementById("resetBtn").addEventListener("click",resetStage);
-
-requestAnimationFrame(loop);
+reset().then(()=>requestAnimationFrame(loop));
 
 </script>
 

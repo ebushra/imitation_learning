@@ -74,7 +74,7 @@ button{
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
   <p>This task has <strong>two training stages</strong>.You will learn how to build momentum and reach the goal at the top of the hill.</p>
-  <p>Below is an example game visual. You are to reach flag as fast as possible. The Left / Right arrow keys accelerate the dot.</p>
+  <p>Below is an example game visual. You are to reach the flag as fast as possible. The Left / Right arrow keys accelerate the dot.</p>
 
   <canvas id="previewCanvas" width="300" height="120"></canvas>
   
@@ -161,18 +161,52 @@ function drawPreview(){
 
   pctx.clearRect(0,0,w,h);
 
+  function previewY(x){
+    return h - (mountainY(x)*h*0.8 + h*0.1);
+  }
+
+  function previewX(x){
+    return ((x + 1.2)/1.8) * w;
+  }
+
+  // terrain
   pctx.beginPath();
   for(let px=0; px<w; px++){
     const x = -1.2 + (px/w)*1.8;
-    const py = (mountainY(x)*h*0.8);
+    const py = previewY(x);
     if(px===0) pctx.moveTo(px,py);
     else pctx.lineTo(px,py);
   }
+  pctx.strokeStyle = "black";
+  pctx.lineWidth = 2;
   pctx.stroke();
 
-  pctx.fillStyle="red";
+  // example car position (left valley)
+  const carX = previewX(-0.5);
+  const carY = previewY(-0.5);
+
   pctx.beginPath();
-  pctx.arc(w*0.3, h*0.6, 5, 0, Math.PI*2);
+  pctx.arc(carX, carY, 5, 0, Math.PI*2);
+  pctx.fillStyle = "red";
+  pctx.fill();
+
+  // goal flag (right hill)
+  const goalX = previewX(0.45);
+  const goalY = previewY(0.45);
+
+  pctx.strokeStyle = "green";
+  pctx.lineWidth = 2;
+  pctx.beginPath();
+  pctx.moveTo(goalX, goalY);
+  pctx.lineTo(goalX, goalY - 20);
+  pctx.stroke();
+
+  pctx.fillStyle = "green";
+  pctx.beginPath();
+  pctx.moveTo(goalX, goalY - 20);
+  pctx.lineTo(goalX + 8, goalY - 15);
+  pctx.lineTo(goalX, goalY - 10);
+  pctx.closePath();
   pctx.fill();
 }
 drawPreview();

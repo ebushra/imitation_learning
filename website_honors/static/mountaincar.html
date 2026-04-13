@@ -148,17 +148,17 @@ function getHumanAction() {
 }
 
 // --- Draw ---
-// --- Draw ---
 function draw(state) {
     const [pos, vel] = state;
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Terrain
+    // --- Terrain ---
     ctx.beginPath();
     for (let px=0; px<canvas.width; px++) {
-        const x = -1.2 + (px/canvas.width)*1.8; 
+        const x = -1.2 + (px/canvas.width)*1.8;
         const y = mountainY(x);
         const py = worldToCanvasY(y);
+
         if (px===0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
     }
@@ -166,40 +166,35 @@ function draw(state) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Car as a dot
+    // --- Car ---
     const carX = worldToCanvasX(pos);
     const carY = worldToCanvasY(mountainY(pos));
+
     ctx.beginPath();
     ctx.arc(carX, carY, 5, 0, 2*Math.PI);
     ctx.fillStyle = "red";
     ctx.fill();
 
-    // Flag
+    // --- Flag (SINGLE CLEAN VERSION) ---
     const fx = worldToCanvasX(goalX);
-    const fy = worldToCanvasY(mountainY(goalX) * 0.9 + 0.05);
+    const fy = worldToCanvasY(mountainY(goalX));
+
+    const flagHeight = 20;
+
+    // pole
     ctx.strokeStyle = "green";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(fx, fy);
-    const flagHeight = 20;
-
-    ctx.beginPath();
-    ctx.moveTo(fx, fy);
     ctx.lineTo(fx, fy - flagHeight);
     ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(fx, fy - flagHeight);
-    ctx.lineTo(fx + 10, fy - flagHeight + 10);
-    ctx.lineTo(fx, fy - flagHeight + 15);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+
+    // triangle flag
     ctx.fillStyle = "green";
     ctx.beginPath();
-    ctx.moveTo(fx, fy-30);
-    ctx.lineTo(fx+10, fy-20);
-    ctx.lineTo(fx, fy-10);
+    ctx.moveTo(fx, fy - flagHeight);
+    ctx.lineTo(fx + 10, fy - flagHeight + 5);
+    ctx.lineTo(fx, fy - flagHeight + 10);
     ctx.closePath();
     ctx.fill();
 }

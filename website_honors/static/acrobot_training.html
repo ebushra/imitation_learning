@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-
 <html>
 <head>
-<title>Acrobot Training</title>
+<title>Acrobot RL Benchmark</title>
 
 <style>
 body{
@@ -11,11 +10,37 @@ body{
   margin-top:20px;
 }
 
+canvas{
+  border:2px solid black;
+}
+
 button{
   padding:8px 16px;
   margin:8px;
   font-size:16px;
   cursor:pointer;
+}
+
+#introBox{
+  max-width:460px;
+  margin:20px auto;
+  border:2px solid #444;
+  padding:15px;
+}
+
+#container{
+  display:none;
+}
+
+#hud{
+  margin-top:10px;
+}
+
+#countdown{
+  font-size:64px;
+  font-weight:bold;
+  height:80px;
+  margin:10px;
 }
 
 .instructions{
@@ -26,65 +51,50 @@ button{
   border:1px solid #aaa;
   padding:8px;
 }
-
-#introBox{
-  max-width:450px;
-  margin:20px auto;
-  border:2px solid #444;
-  padding:15px;
-}
-
-#previewUI{
-  display:none;
-  text-align:center;
-}
-
-canvas{
-  border:2px solid black;
-}
 </style>
 </head>
 
 <body>
 
-<h2>Acrobot Training</h2>
+<h2>Acrobot RL Benchmark</h2>
 
 <div id="introBox">
-  <p><strong>Welcome!</strong></p>
-  <p>This task has <strong>two training stages</strong>.</p>
-  <p>You will learn how to swing the bottom of the Acrobot to reach a target line.</p>
-  <p>Each stage increases difficulty by moving the target higher.</p>
-  <p>Try to reach the line as quickly as possible!</p>
-  <button id="startBtn">Start Training</button>
+  <p><strong>Benchmark Setup</strong></p>
+  <p>This environment has <b>two curriculum stages</b>.</p>
+  <p>Control is applied to the <b>middle joint torque</b>.</p>
+  <p>Physics is frozen during initialization for fairness.</p>
+  <button id="startBtn">Start Episode</button>
 </div>
 
-<div id="previewUI">
+<div id="container">
 
   <canvas id="canvas" width="220" height="220"></canvas>
 
-  <div id="countdown" style="
-    font-size:64px;
-    font-weight:bold;
-    margin-top:10px;
-    min-height:80px;
-  "></div>
+  <div id="countdown"></div>
 
-  <div id="timer" style="margin-top:10px;"></div>
-  <div id="stageInfo"></div>
-
-  <div class="instructions">
-    <p><strong>Goal</strong><br>Reach the red line with the bottom joint as fast as possible.</p>
-    <p><strong>Controls</strong><br>Left / Right arrow keys apply torque to the blue middle joint.</p>
-    <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
+  <div id="hud">
+    <div id="timer"></div>
+    <div id="stageInfo"></div>
   </div>
 
-  <button id="resetBtn">Restart Stage</button>
+  <div class="instructions">
+    <b>Action Space</b>: Left / Right / No-op  
+    <br><b>Objective</b>: Reach red threshold with end effector  
+    <br><b>Note</b>: Physics is frozen during initialization phase
+  </div>
+
+  <button id="resetBtn">Reset Stage</button>
+
 </div>
 
 <script>
 if (localStorage.getItem("consentGiven") !== "true") {
   window.location.href = "/static/consent.html";
 }
+
+/* =======================
+   ENV STATE
+======================= */
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -93,191 +103,217 @@ const countdownEl = document.getElementById("countdown");
 const timerEl = document.getElementById("timer");
 const stageInfo = document.getElementById("stageInfo");
 
-const originY = 35;
-const L1 = 60;
-const L2 = 60;
-
 const API_BASE = "/acrobot";
 
-let state=null;
-let stageStartTime=null;
-let resetting=false;
-let started=false;
+const L1 = 60;
+const L2 = 60;
+const originY = 35;
 
-const keys={ArrowLeft:false,ArrowRight:false};
+/* =======================
+   CONTROL FLAGS (RL CORE)
+======================= */
+
+let locked = true;      // 🔥 physics freeze
+let started = false;
+let state = null;
+let stageStartTime = null;
+let stageIndex = 0;
+
+/* =======================
+   INPUT
+======================= */
+
+const keys = { ArrowLeft:false, ArrowRight:false };
 
 document.addEventListener("keydown",e=>{
- if(e.key in keys) keys[e.key]=true;
+  if(e.key in keys) keys[e.key] = true;
 });
 
 document.addEventListener("keyup",e=>{
- if(e.key in keys) keys[e.key]=false;
+  if(e.key in keys) keys[e.key] = false;
 });
 
 function getAction(){
- if(keys.ArrowLeft) return 0;
- if(keys.ArrowRight) return 2;
- return 1;
+  if(keys.ArrowLeft) return 0;
+  if(keys.ArrowRight) return 2;
+  return 1;
 }
 
-const STAGES=[
- {targetY:120,text:"Stage 1: Tip Over Line"},
- {targetY:80,text:"Stage 2: Tip Over Higher Line"}
+/* =======================
+   STAGES
+======================= */
+
+const STAGES = [
+  {targetY:120, text:"Stage 1"},
+  {targetY:80, text:"Stage 2"}
 ];
 
-let stageIndex=0;
+/* =======================
+   UTIL
+======================= */
 
 function sleep(ms){
   return new Promise(r => setTimeout(r, ms));
 }
 
+/* =======================
+   RL RESET (SAFE)
+======================= */
+
+async function resetStage(){
+
+  locked = true; // freeze during reset
+
+  const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
+  const data = await res.json();
+
+  state = data.state;
+  stageStartTime = performance.now();
+
+  locked = false; // unlock AFTER reset
+}
+
+/* =======================
+   COUNTDOWN (PHYSICS FROZEN)
+======================= */
+
 async function runCountdown(){
 
   document.getElementById("introBox").style.display = "none";
-  document.getElementById("previewUI").style.display = "block";
+  document.getElementById("container").style.display = "block";
+
+  countdownEl.textContent = "";
+
+  locked = true; // 🔥 FREEZE PHYSICS
 
   await new Promise(r => requestAnimationFrame(r));
 
-  countdownEl.textContent = "3";
-  await sleep(1000);
+  for (let v of ["3","2","1"]){
+    countdownEl.textContent = v;
+    await sleep(1000);
+  }
 
-  countdownEl.textContent = "2";
-  await sleep(1000);
-
-  countdownEl.textContent = "1";
-  await sleep(1000);
-
-  countdownEl.textContent = "Start!";
-  await sleep(800);
+  countdownEl.textContent = "GO";
+  await sleep(700);
 
   countdownEl.textContent = "";
 
   started = true;
-  resetStage();
+
+  await resetStage(); // unlocks AFTER resetStage finishes
 }
 
-function drawAcrobot(theta1,theta2){
+/* =======================
+   DRAW
+======================= */
 
- const w=canvas.width;
- ctx.clearRect(0,0,w,w);
+function draw(theta1, theta2){
 
- const originX=w/2;
+  const w = canvas.width;
+  ctx.clearRect(0,0,w,w);
 
- const x1=originX+L1*Math.sin(theta1);
- const y1=originY+L1*Math.cos(theta1);
+  const ox = w/2;
 
- const x2=x1+L2*Math.sin(theta1+theta2);
- const y2=y1+L2*Math.cos(theta1+theta2);
+  const x1 = ox + L1*Math.sin(theta1);
+  const y1 = originY + L1*Math.cos(theta1);
 
- // links
- ctx.beginPath();
- ctx.moveTo(originX,originY);
- ctx.lineTo(x1,y1);
- ctx.lineTo(x2,y2);
- ctx.strokeStyle="black";
- ctx.lineWidth=2;
- ctx.stroke();
+  const x2 = x1 + L2*Math.sin(theta1 + theta2);
+  const y2 = y1 + L2*Math.cos(theta1 + theta2);
 
- // joints
- ctx.fillStyle="black";
- ctx.beginPath();
- ctx.arc(originX,originY,3,0,Math.PI*2);
- ctx.fill();
+  // links
+  ctx.beginPath();
+  ctx.moveTo(ox, originY);
+  ctx.lineTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.strokeStyle="black";
+  ctx.lineWidth=2;
+  ctx.stroke();
 
- // middle joint (BLUE)
- ctx.fillStyle="blue";
- ctx.beginPath();
- ctx.arc(x1,y1,4,0,Math.PI*2);
- ctx.fill();
+  // joints
+  ctx.fillStyle="black";
+  ctx.beginPath();
+  ctx.arc(ox,originY,3,0,Math.PI*2);
+  ctx.fill();
 
- ctx.fillStyle="black";
- ctx.beginPath();
- ctx.arc(x2,y2,3,0,Math.PI*2);
- ctx.fill();
+  ctx.fillStyle="blue";
+  ctx.beginPath();
+  ctx.arc(x1,y1,4,0,Math.PI*2);
+  ctx.fill();
 
- const targetY=STAGES[stageIndex].targetY;
+  ctx.fillStyle="black";
+  ctx.beginPath();
+  ctx.arc(x2,y2,3,0,Math.PI*2);
+  ctx.fill();
 
- ctx.beginPath();
- ctx.setLineDash([5,5]);
- ctx.strokeStyle="red";
- ctx.moveTo(0,targetY);
- ctx.lineTo(w,targetY);
- ctx.stroke();
- ctx.setLineDash([]);
+  // target
+  const ty = STAGES[stageIndex].targetY;
 
- return {y2};
+  ctx.beginPath();
+  ctx.setLineDash([5,5]);
+  ctx.strokeStyle="red";
+  ctx.moveTo(0,ty);
+  ctx.lineTo(w,ty);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  return y2;
 }
 
-function updateUI(){
-  timerEl.textContent =
-    "Time: " + Math.floor((performance.now() - stageStartTime) / 1000) + " s";
-
-  stageInfo.textContent = STAGES[stageIndex].text;
-}
-
-async function resetStage(){
-
- resetting=true;
-
- const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
- const data = await res.json();
-
- state = data.state;
-
- stageStartTime = performance.now();
-
- resetting=false;
-}
-
-function checkTraining(tipY){
-
- if(tipY <= STAGES[stageIndex].targetY){
-
-   stageIndex++;
-
-   if(stageIndex >= STAGES.length){
-
-     localStorage.setItem("acrobot_training_complete","1");
-
-     alert("Training complete! Real Acrobot unlocked.");
-
-     window.location.href="/static/acrobot.html";
-
-   } else {
-
-     alert("Good! Next stage — line moved higher.");
-     resetStage();
-   }
- }
-}
+/* =======================
+   STEP (RL LOOP)
+======================= */
 
 async function step(){
 
- if(!started || resetting || !state) return;
+  if(!started || locked || !state) return;
 
- const action = getAction();
+  const action = getAction();
 
- const res = await fetch(`${API_BASE}/step/${action}`, {method:"POST"});
- const data = await res.json();
+  const res = await fetch(`${API_BASE}/step/${action}`, {method:"POST"});
+  const data = await res.json();
 
- state = data.state;
+  state = data.state;
 
- drawAcrobot(state[0], state[1]);
+  const tipY = draw(state[0], state[1]);
 
- updateUI();
+  timerEl.textContent =
+    "Time: " + Math.floor((performance.now() - stageStartTime)/1000) + "s";
 
- checkTraining(drawAcrobot(state[0], state[1]).y2);
+  stageInfo.textContent = STAGES[stageIndex].text;
+
+  if(tipY <= STAGES[stageIndex].targetY){
+
+    locked = true;
+
+    stageIndex++;
+
+    if(stageIndex >= STAGES.length){
+      alert("Benchmark complete");
+      location.reload();
+    } else {
+      alert("Stage complete");
+      await resetStage();
+    }
+  }
 }
 
-async function gameLoop(){
- await step();
- requestAnimationFrame(gameLoop);
+/* =======================
+   LOOP
+======================= */
+
+async function loop(){
+  await step();
+  requestAnimationFrame(loop);
 }
 
-document.getElementById("startBtn").addEventListener("click", runCountdown);
-document.getElementById("resetBtn").addEventListener("click", resetStage);
+/* =======================
+   START
+======================= */
 
-requestAnimationFrame(gameLoop);
+document.getElementById("startBtn").onclick = runCountdown;
+document.getElementById("resetBtn").onclick = resetStage;
+
+requestAnimationFrame(loop);
 
 </script>
 

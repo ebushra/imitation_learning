@@ -328,12 +328,15 @@ document.getElementById("startTrainingBtn").onclick = async () => {
   requestAnimationFrame(loop);
 };
 
-document.getElementById("giveDataBtn").onclick = () => {
+document.getElementById("giveDataBtn").onclick = async () => {
   dataModal.style.display = "none";
   dataCollectionMode = true;
   finishBtn.style.display = "inline-block";
 
   paused = false;
+  await resetStage();
+  running = true;
+  requestAnimationFrame(loop);
 };
 
 document.getElementById("finishNowBtn").onclick = () => {

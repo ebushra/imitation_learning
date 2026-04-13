@@ -208,7 +208,7 @@ function updateLaps() {
   if (laps.length >= 5 && !dataModalShown) {
     dataModalShown = true;
     setTimeout(() => {
-      pausedGame();
+      pauseGame();
       dataModal.style.display = "flex";
     }, 400);
   }

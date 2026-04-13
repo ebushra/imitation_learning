@@ -148,7 +148,7 @@ function recordLap(time){
   lapDiv.innerHTML =
     laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`).join("<br>");
 
-  if (laps.length >= 5) {
+  if (laps.length == 5) {
     localStorage.setItem("acrobot_complete", "true");
     showPopup();
   }

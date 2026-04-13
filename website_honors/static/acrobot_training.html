@@ -330,19 +330,22 @@ async function resetStage(){
 }
 
 function checkTraining(tipY){
-
- if(tipY <= STAGES[stageIndex].targetY){
-
-   stageIndex++;
-
-   if(stageIndex >= STAGES.length){
-     alert("Training complete!");
-     location.reload();
-   } else {
-     alert("Next stage");
-     resetStage();
-   }
- }
+  if(tipY <= STAGES[stageIndex].targetY){
+  
+    stageIndex++;
+  
+    if(stageIndex >= STAGES.length){
+  
+      localStorage.setItem("acrobot_training_complete","1");
+  
+      alert("Training complete!");
+      window.location.href = "/static/acrobot.html"; 
+  
+    } else {
+      alert("Next stage");
+      resetStage();
+    }
+  }
 }
 
 async function step(){

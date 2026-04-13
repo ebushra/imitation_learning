@@ -259,7 +259,7 @@ function drawPreview(){
       p_vel = 0;
     }
 
-    requestAnimationFrame(step);
+    setTimeout(() => requestAnimationFrame(step), 40);
   }
 
   step();

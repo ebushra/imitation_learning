@@ -118,6 +118,8 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
   window.location.href = "/static/mountaincar_training.html";
 }
 let paused = true;
+let pauseStart = 0;
+let pausedTime = 0;
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -165,10 +167,26 @@ function worldToCanvasY(y) {
   const usable = canvas.height - TOP_PAD - BOT_PAD;
   return canvas.height - BOT_PAD - y * usable;
 }
+function pauseGame() {
+  if (paused) return;
+  paused = true;
+  pauseStart = performance.now();
+}
 
+function resumeGame() {
+  if (!paused) return;
+  paused = false;
+  pausedTime += performance.now() - pauseStart;
+}
 // ---------------- Timer ----------------
 function getTime() {
-  return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0;
+  if (!stageStartTime) return 0;
+
+  if (paused) {
+    return (pauseStart - stageStartTime - pausedTime) / 1000;
+  }
+
+  return (performance.now() - stageStartTime - pausedTime) / 1000;
 }
 
 let frozenTime = 0;
@@ -190,7 +208,7 @@ function updateLaps() {
   if (laps.length >= 5 && !dataModalShown) {
     dataModalShown = true;
     setTimeout(() => {
-      paused = true;
+      pausedGame();
       dataModal.style.display = "flex";
     }, 400);
   }

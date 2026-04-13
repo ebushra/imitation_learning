@@ -33,13 +33,13 @@ class WebMountainCar:
 
         # NORMAL GAME
         if not self.training_mode:
-            done = terminated or truncated
+            done = terminated
             success = terminated
 
         # TRAINING MODE (CUSTOM GOAL)
         else:
             success = position >= self.training_goal
-            done = success or truncated
+            done = success
 
         # lap timer (only when success)
         if success:

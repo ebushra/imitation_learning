@@ -73,11 +73,11 @@ button{
 <!-- INTRO -->
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
-  <p>Learn to build momentum and reach the goal at the top of the hill.</p>
+  <p>This task has <strong>two training stages</strong>.You will learn how to build momentum and reach the goal at the top of the hill.</p>
+  <p>Below is an example game visual. You are to reach flag as fast as possible. The Left / Right arrow keys accelerate the dot.</p>
 
   <canvas id="previewCanvas" width="300" height="120"></canvas>
-
-  <p>Use left/right arrows to accelerate.</p>
+  
   <button id="startBtn">Start Training</button>
 </div>
 
@@ -144,7 +144,7 @@ function updateTimerDisplay() {
 function updateStageText() {
   const s = TRAINING_STAGES[stageIndex];
   document.getElementById("stageInfo").textContent =
-    `Stage ${stageIndex+1}: Reach x ≥ ${s.goalX} in ${s.duration}s`;
+    `Stage ${stageIndex+1}: Reach the goal in ${s.duration}s`;
 }
 
 // --- Action ---
@@ -164,7 +164,7 @@ function drawPreview(){
   pctx.beginPath();
   for(let px=0; px<w; px++){
     const x = -1.2 + (px/w)*1.8;
-    const py = h - (mountainY(x)*h*0.8);
+    const py = (mountainY(x)*h*0.8);
     if(px===0) pctx.moveTo(px,py);
     else pctx.lineTo(px,py);
   }

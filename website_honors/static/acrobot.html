@@ -4,42 +4,19 @@
   <title>Acrobot</title>
   <style>
     body { text-align: center; font-family: sans-serif; margin-top: 20px; }
-
     canvas { border: 2px solid black; }
-
     button { padding: 8px 16px; margin: 8px; font-size: 16px; cursor: pointer; }
-
     .instructions { font-size: 12px; max-width: 420px; margin: 10px auto; text-align: left; }
-
-    /* only addition: wrapper for timer overlay */
-    #gameWrapper {
-      position: relative;
-      width: 220px;
-      margin: 0 auto;
-    }
-
-    #timer {
-      position: absolute;
-      top: 5px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 14px;
-      font-weight: bold;
-      background: rgba(255,255,255,0.8);
-      padding: 2px 6px;
-      border-radius: 4px;
-      pointer-events: none;
-    }
   </style>
 </head>
-
 <body>
 
 <div id="instructionsModal">
   <div id="instructionsModalContent">
     <h3>Acrobot Instructions</h3>
-    <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds.</p>
-    <p><strong>Controls</strong><br>Use Left / Right arrows.</p>
+     <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
+    <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the blue middle joint.</p>
+    <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
     <button id="startTrainingBtn">Start</button>
   </div>
 </div>
@@ -47,50 +24,48 @@
 <style>
   #instructionsModal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex; justify-content: center; align-items: center;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
     z-index: 10;
   }
-
   #instructionsModalContent {
-    background: white; padding: 20px; border-radius: 6px;
-    max-width: 400px; text-align: left;
+    background: white; padding: 20px; border-radius: 6px; max-width: 400px; text-align: left;
   }
+  #instructionsModal button { display: block; margin: 10px auto 0 auto; }
 </style>
 
 <h2>Acrobot</h2>
 
-<div id="gameWrapper">
-  <canvas id="acrobotCanvas" width="220" height="220"></canvas>
-  <div id="timer">Time: 0.0 s</div>
-</div>
+<canvas id="acrobotCanvas" width="220" height="220"></canvas>
 
-<h3 id="timerHidden" style="display:none;"></h3>
+<h3 id="timer">Time: 0.0 s</h3>
 
-<div class="instructions">
-  <p><strong>Goal</strong><br>Reach the red line as fast as possible.</p>
+<div class="instructions" id="instructionsBox">
+  <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds. </p>
+  <p><strong>Controls</strong><br>Use the <em>Left</em> and <em>Right Arrow</em> keys to apply torque to the blue middle joint.</p>
+  <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
 </div>
 
 <button id="resetBtn">Restart</button>
 
 <script>
+const startBtn = document.getElementById("startTrainingBtn");
+const modal = document.getElementById("instructionsModal");
 
-// --- GATE ---
+startBtn.addEventListener("click", async () => {
+    modal.style.display = "none";
+    await reset();
+});
+// --- Training gate ---
 if(!localStorage.getItem("acrobot_training_complete")){
   alert("You must complete Acrobot training first!");
   window.location.href = "/static/acrobot_training.html";
 }
-
-// --- UI ---
-const startBtn = document.getElementById("startTrainingBtn");
-const modal = document.getElementById("instructionsModal");
-
+  
 const canvas = document.getElementById("acrobotCanvas");
 const ctx = canvas.getContext("2d");
-
 const timerEl = document.getElementById("timer");
+const resetBtn = document.getElementById("resetBtn");
 
-// --- STATE ---
 const originY = 35;
 const L1 = 60;
 const L2 = 60;
@@ -98,68 +73,50 @@ const targetY = 55;
 
 const keys = { ArrowLeft:false, ArrowRight:false };
 
-let state=null;
-let resetting=false;
-let started=false;
-
-// 🔥 IMPORTANT FIX: timer starts ONLY here
-let startTime = null;
-
-// --- INPUT ---
-document.addEventListener("keydown",e=>{
+document.addEventListener('keydown',e=>{
   if(e.key in keys) keys[e.key]=true;
 });
 
-document.addEventListener("keyup",e=>{
+document.addEventListener('keyup',e=>{
   if(e.key in keys) keys[e.key]=false;
 });
 
-function getAction(){
-  if(keys.ArrowLeft) return 0;
-  if(keys.ArrowRight) return 2;
-  return 1;
+let startTime = performance.now();
+let laps = [];
+
+const lapDiv = document.createElement("div");
+lapDiv.style.fontSize = "14px";
+lapDiv.style.marginTop = "10px";
+document.body.appendChild(lapDiv);
+
+function recordLap(time){
+  laps.push(time);
+  lapDiv.innerHTML =
+    laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`).join("<br>");
+  if (laps.length >= 5) {
+    localStorage.setItem("acrobot_complete", "true");
+
+    setTimeout(() => {
+      window.location.href = "/static/mountaincar_training.html";
+    }, 750); // small delay so user sees final result
+  }
 }
 
-// --- RESET ---
-async function reset(){
-
-  resetting = true;
-
-  const res = await fetch("/acrobot/reset",{method:"POST", credentials:"include"});
-  const data = await res.json();
-
-  state = data.state;
-
-  resetting = false;
-}
-
-// --- START ---
-startBtn.addEventListener("click", async () => {
-  modal.style.display = "none";
-
-  await reset();
-
-  // 🔥 DO NOT START TIMER YET
-  startTime = performance.now();
-  started = true;
-});
-
-// --- DRAW ---
-function draw(theta1,theta2){
+function drawAcrobot(theta1,theta2){
 
   const w = canvas.width;
   ctx.clearRect(0,0,w,w);
 
-  const ox = w/2;
+  const originX = w/2;
 
-  const x1 = ox + L1*Math.sin(theta1);
+  const x1 = originX + L1*Math.sin(theta1);
   const y1 = originY + L1*Math.cos(theta1);
 
   const x2 = x1 + L2*Math.sin(theta1+theta2);
   const y2 = y1 + L2*Math.cos(theta1+theta2);
 
   ctx.beginPath();
-  ctx.moveTo(ox,originY);
+  ctx.moveTo(originX,originY);
   ctx.lineTo(x1,y1);
   ctx.lineTo(x2,y2);
   ctx.strokeStyle="black";
@@ -167,13 +124,12 @@ function draw(theta1,theta2){
   ctx.stroke();
 
   ctx.fillStyle="black";
-  [[ox,originY],[x2,y2]].forEach(([x,y])=>{
+  [[originX,originY],[x1,y1],[x2,y2]].forEach(([x,y])=>{
     ctx.beginPath();
     ctx.arc(x,y,3,0,Math.PI*2);
     ctx.fill();
   });
 
-  // 🔵 middle joint (FIXED)
   ctx.fillStyle="blue";
   ctx.beginPath();
   ctx.arc(x1,y1,4,0,Math.PI*2);
@@ -187,42 +143,65 @@ function draw(theta1,theta2){
   ctx.stroke();
   ctx.setLineDash([]);
 
-  return y2;
+  return {x2,y2};
 }
 
-// --- STEP ---
-async function step(){
+const API_BASE="/acrobot";
+let state=null;
+let resetting=false;
 
-  if(!started || resetting || !state) return;
+async function reset(){
 
-  let action = 1;
-  if(keys.ArrowLeft) action = 0;
-  if(keys.ArrowRight) action = 2;
+  resetting=true;
 
-  const res = await fetch(`/acrobot/step/${action}`,{method:"POST", credentials:"include"});
+  const res = await fetch(`${API_BASE}/reset`,{method:"POST", credentials: "include"});
   const data = await res.json();
 
-  state = data.state;
+  state=data.state;
+  startTime=performance.now();
 
-  draw(state[0],state[1]);
+  resetting=false;
 }
 
-// --- LOOP ---
-async function loop(){
+async function step(){
+
+  if(resetting || !state) return;
+
+  let action=1;
+
+  if(keys.ArrowLeft) action=0;
+  if(keys.ArrowRight) action=2;
+
+  const res = await fetch(`${API_BASE}/step/${action}`,{method:"POST", credentials: "include"});
+  const data = await res.json();
+
+  state=data.state;
+
+  const {y2} = drawAcrobot(state[0],state[1]);
+
+  if(y2 <= targetY){
+
+    const lapTime=(performance.now()-startTime)/1000;
+
+    recordLap(lapTime);
+
+    await reset();
+  }
+}
+
+async function gameLoop(){
+
   await step();
 
-  // 🔥 FIX: timer only runs if started
-  if(started && startTime){
-    timerEl.textContent =
-      "Time: " + ((performance.now()-startTime)/1000).toFixed(1) + " s";
-  }
+  timerEl.textContent =
+    "Time: " + Math.floor((performance.now() - startTime) / 1000) + " s";
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
 
-document.getElementById("resetBtn").addEventListener("click",reset);
+resetBtn.addEventListener("click",reset);
 
-reset().then(()=>requestAnimationFrame(loop));
+reset().then(()=>requestAnimationFrame(gameLoop));
 
 </script>
 

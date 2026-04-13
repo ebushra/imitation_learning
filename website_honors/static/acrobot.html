@@ -46,8 +46,9 @@
 <div id="instructionsModal">
   <div id="instructionsModalContent">
     <h3>Acrobot Instructions</h3>
-    <p><strong>Goal</strong><br>Reach the red line as fast as possible. Please complete 5 rounds.</p>
-    <p><strong>Controls</strong><br>Use Left/Right arrows.</p>
+    <p><strong>Goal</strong><br>Reach the red line with the bottom joint as fast as possible.</p>
+    <p><strong>Controls</strong><br>Left / Right arrow keys apply torque to the blue middle joint.</p>
+    <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
     <button id="startTrainingBtn">Start</button>
   </div>
 </div>
@@ -73,7 +74,9 @@
 <h3 id="timer">Time: 0.0 s</h3>
 
 <div class="instructions">
-  <p><strong>Goal</strong><br>Reach the red line as fast as possible.</p>
+  <p><strong>Goal</strong><br>Reach the red line with the bottom joint as fast as possible.</p>
+  <p><strong>Controls</strong><br>Left / Right arrow keys apply torque to the blue middle joint.</p>
+  <p><strong>Hint</strong><br>Pump the swing — go with the motion, not against it.</p>
 </div>
 
 <button id="resetBtn">Restart</button>
@@ -90,7 +93,7 @@
 </div>
 
 <script>
-
+let frozen = false;
 const startBtn = document.getElementById("startTrainingBtn");
 const modal = document.getElementById("instructionsModal");
 
@@ -153,6 +156,7 @@ function recordLap(time){
 
 /* ---------------- POPUP ---------------- */
 function showPopup(){
+  frozen = true;
   popup.style.display = "flex";
 }
 
@@ -162,6 +166,7 @@ goNextGameBtn.onclick = () => {
 
 moreDataBtn.onclick = () => {
   popup.style.display = "none";
+  frozen = false;
   dataMode = true;
   continueBtn.style.display = "inline-block";
 };
@@ -184,7 +189,7 @@ async function reset(){
 /* ---------------- STEP ---------------- */
 async function step(){
 
-  if(!state) return;
+  if(!state || frozen) return;
 
   let action=1;
   if(keys.ArrowLeft) action=0;

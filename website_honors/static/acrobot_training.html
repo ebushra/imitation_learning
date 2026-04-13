@@ -149,7 +149,11 @@ function sleep(ms){
 async function runCountdown(){
 
   document.getElementById("introBox").style.display = "none";
+
   document.getElementById("gameUI").style.display = "block";
+
+  // allow browser to paint canvas first
+  await new Promise(r => requestAnimationFrame(r));
 
   countdownEl.style.display = "flex";
 

@@ -87,8 +87,8 @@ button{
 
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
-  <p>This task has <strong>two training stages</strong>.</p>
-  <p>You will learn how to swing the bottom of the Acrobot to reach a target line.</p>
+  <p>This task has <strong>two training stages</strong>.You will learn how to swing the bottom of the Acrobot to reach a target line.</p>
+  <p>Below is an example game visual. You are to reach the red line with the bottom joint as fast as possible. The Left / Right arrow keys apply torque to the blue middle joint.</p>
 
   <!-- ✅ SCREENSHOT PREVIEW -->
   <canvas id="previewCanvas" width="220" height="120"></canvas>
@@ -180,7 +180,6 @@ function drawPreview(){
 
   pctx.clearRect(0,0,w,h);
 
-  // simple static demo arm
   const ox = w/2;
   const oy = 20;
 
@@ -190,6 +189,7 @@ function drawPreview(){
   const x2 = x1 + 40;
   const y2 = y1 + 40;
 
+  // links
   pctx.beginPath();
   pctx.moveTo(ox,oy);
   pctx.lineTo(x1,y1);
@@ -198,15 +198,25 @@ function drawPreview(){
   pctx.lineWidth=2;
   pctx.stroke();
 
-  // joints
+  // base joint
   pctx.fillStyle="black";
-  [[ox,oy],[x1,y1],[x2,y2]].forEach(([x,y])=>{
-    pctx.beginPath();
-    pctx.arc(x,y,3,0,Math.PI*2);
-    pctx.fill();
-  });
+  pctx.beginPath();
+  pctx.arc(ox,oy,3,0,Math.PI*2);
+  pctx.fill();
 
-  // red target line
+  // 🔵 MIDDLE JOINT (BLUE)
+  pctx.fillStyle="blue";
+  pctx.beginPath();
+  pctx.arc(x1,y1,5,0,Math.PI*2);
+  pctx.fill();
+
+  // end joint
+  pctx.fillStyle="black";
+  pctx.beginPath();
+  pctx.arc(x2,y2,3,0,Math.PI*2);
+  pctx.fill();
+
+  // target line
   pctx.beginPath();
   pctx.setLineDash([4,4]);
   pctx.strokeStyle="red";
@@ -215,7 +225,6 @@ function drawPreview(){
   pctx.stroke();
   pctx.setLineDash([]);
 }
-
 drawPreview();
 
 /* =========================

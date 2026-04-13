@@ -118,8 +118,10 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
   window.location.href = "/static/mountaincar_training.html";
 }
 let paused = true;
+let stageStartTime = 0;
+let accumulatedPause = 0;
 let pauseStart = 0;
-let pausedTime = 0;
+let frozenTime = 0;
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -172,32 +174,25 @@ function pauseGame() {
   paused = true;
   pauseStart = performance.now();
 }
-
 function resumeGame() {
   if (!paused) return;
   paused = false;
-  pausedTime += performance.now() - pauseStart;
+  accumulatedPause += performance.now() - pauseStart;
 }
 // ---------------- Timer ----------------
 function getTime() {
-  if (!stageStartTime) return 0;
-
-  if (paused) {
-    return (pauseStart - stageStartTime - pausedTime) / 1000;
-  }
-
-  return (performance.now() - stageStartTime - pausedTime) / 1000;
+  return frozenTime;
 }
 
 let frozenTime = 0;
 
 function updateTimer() {
   if (!paused) {
-    frozenTime = getTime();
+    frozenTime = (performance.now() - stageStartTime - accumulatedPause) / 1000;
   }
+
   timerEl.textContent = `Time: ${Math.floor(frozenTime)} s`;
 }
-
 // ---------------- Laps ----------------
 function updateLaps() {
   lapsDiv.innerHTML = laps.length
@@ -280,7 +275,11 @@ async function resetStage() {
   });
 
   const data = await res.json();
+
   stageStartTime = performance.now();
+  accumulatedPause = 0;
+  frozenTime = 0;
+
   draw(data.state);
 }
 
@@ -327,12 +326,10 @@ document.getElementById("startTrainingBtn").onclick = async () => {
   requestAnimationFrame(loop);
 };
 
-document.getElementById("giveDataBtn").onclick = () => {
+giveDataBtn.onclick = () => {
   dataModal.style.display = "none";
-  dataCollectionMode = true;
   finishBtn.style.display = "inline-block";
-
-  paused = false;
+  resumeGame();
   requestAnimationFrame(loop);
 };
 

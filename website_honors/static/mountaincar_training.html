@@ -168,60 +168,89 @@ function getAction() {
 }
 
 // --- DRAW PREVIEW ---
+/* =========================
+   PREVIEW ANIMATION (looping car motion)
+========================= */
+
+let previewT = 0;
+
 function drawPreview(){
+
   const w = previewCanvas.width;
   const h = previewCanvas.height;
-
-  pctx.clearRect(0,0,w,h);
-
-  function previewY(x){
-    return h - (mountainY(x)*h*0.8 + h*0.1);
-  }
 
   function previewX(x){
     return ((x + 1.2)/1.8) * w;
   }
 
-  // terrain
-  pctx.beginPath();
-  for(let px=0; px<w; px++){
-    const x = -1.2 + (px/w)*1.8;
-    const py = previewY(x);
-    if(px===0) pctx.moveTo(px,py);
-    else pctx.lineTo(px,py);
+  function previewY(x){
+    return h - ( (Math.sin(3*x)*0.45 + 0.55) * h*0.9 + h*0.05 );
   }
-  pctx.strokeStyle = "black";
-  pctx.lineWidth = 2;
-  pctx.stroke();
 
-  // example car position (left valley)
-  const carX = previewX(-0.5);
-  const carY = previewY(-0.5);
+  function frame(){
 
-  pctx.beginPath();
-  pctx.arc(carX, carY, 5, 0, Math.PI*2);
-  pctx.fillStyle = "red";
-  pctx.fill();
+    previewT += 0.02;
 
-  // goal flag (right hill)
-  const goalX = previewX(0.45);
-  const goalY = previewY(0.45);
+    pctx.clearRect(0,0,w,h);
 
-  pctx.strokeStyle = "green";
-  pctx.lineWidth = 2;
-  pctx.beginPath();
-  pctx.moveTo(goalX, goalY);
-  pctx.lineTo(goalX, goalY - 20);
-  pctx.stroke();
+    // --- terrain (UNCHANGED STYLE) ---
+    pctx.beginPath();
+    for(let px=0; px<w; px++){
+      const x = -1.2 + (px/w)*1.8;
+      const py = previewY(x);
 
-  pctx.fillStyle = "green";
-  pctx.beginPath();
-  pctx.moveTo(goalX, goalY - 20);
-  pctx.lineTo(goalX + 8, goalY - 15);
-  pctx.lineTo(goalX, goalY - 10);
-  pctx.closePath();
-  pctx.fill();
+      if(px===0) pctx.moveTo(px,py);
+      else pctx.lineTo(px,py);
+    }
+    pctx.strokeStyle = "black";
+    pctx.lineWidth = 2;
+    pctx.stroke();
+
+    // --- fake oscillating car position ---
+    // back-and-forth motion that gradually reaches the goal
+    const pos = -0.6 + Math.sin(previewT) * 0.6;
+
+    const carX = previewX(pos);
+    const carY = previewY(pos);
+
+    pctx.beginPath();
+    pctx.arc(carX, carY, 5, 0, Math.PI*2);
+    pctx.fillStyle = "red";
+    pctx.fill();
+
+    // --- goal flag ---
+    const goal = 0.45;
+    const fx = previewX(goal);
+    const fy = previewY(goal);
+
+    pctx.strokeStyle = "green";
+    pctx.lineWidth = 2;
+    pctx.beginPath();
+    pctx.moveTo(fx, fy);
+    pctx.lineTo(fx, fy - 20);
+    pctx.stroke();
+
+    pctx.fillStyle = "green";
+    pctx.beginPath();
+    pctx.moveTo(fx, fy - 20);
+    pctx.lineTo(fx + 8, fy - 15);
+    pctx.lineTo(fx, fy - 10);
+    pctx.closePath();
+    pctx.fill();
+
+    // --- success flash when reaching goal ---
+    if(pos >= goal){
+      pctx.fillStyle = "rgba(0,255,0,0.15)";
+      pctx.fillRect(0,0,w,h);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  frame();
 }
+
+// start animation
 drawPreview();
 
 // --- DRAW GAME ---

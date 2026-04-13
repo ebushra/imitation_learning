@@ -238,12 +238,6 @@ function drawPreviewFrame(){
   pctx.stroke();
   pctx.setLineDash([]);
 
-  // --- "success" flash when reaching line ---
-  if(y2 <= targetY){
-    pctx.fillStyle = "rgba(0,255,0,0.15)";
-    pctx.fillRect(0,0,w,h);
-  }
-
   requestAnimationFrame(drawPreviewFrame);
 }
 

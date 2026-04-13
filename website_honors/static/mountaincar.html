@@ -23,14 +23,21 @@
       margin: 10px auto;
       text-align: left;
     }
+    #gameBox {
+      display: inline-block;
+      border: 2px solid black;
+      padding: 6px;
+      background: white;
+    }
   </style>
 </head>
 <body>
 
 <div id="instructionsModal">
   <div id="instructionsModalContent">
+    <h2>Congrats! You have completed the training for mountaincar. Please continue to the full game.</h2>
     <h3>MountainCar Instructions</h3>
-    <p><strong>Goal:</strong> Reach the green line at the top of the hill as fast as possible. Please complete 5 rounds.</p>
+    <p><strong>Goal:</strong> Reach the green line at the top of the hill as fast as possible. Please complete at least <strong>5 rounds.</strong></p>
     <p><strong>Controls:</strong> Use the <em>Left</em> and <em>Right Arrow</em> keys to accelerate the dot. </p>
     <p><strong>Hint:</strong> Build momentum by rocking back and forth!</p>
     <button id="startTrainingBtn">Start</button>
@@ -50,7 +57,9 @@
 </style>
 
 <h2>MountainCar</h2>
-<canvas id="gameCanvas" width="300" height="200"></canvas>
+<div id="gameBox">
+  <canvas id="gameCanvas" width="300" height="200"></canvas>
+</div>
 <br>
 <p id="timer" style="font-size:14px; margin-top:6px;">Time: 0 s</p>
 <p id="status" style="font-size:14px; margin-top:6px;"></p>
@@ -59,7 +68,7 @@
 
 
 <div class="instructions">
-  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete 5 rounds.<br> </p>
+  <p> <strong>Goal</strong><br> Reach the green flag on the right hill as fast as possible. Please complete at least <strong>5 rounds.</strong><br> </p>
   <p> <strong>Controls</strong><br> 
   Left / Right Arrow keys. </p> 
   <p> <strong>Hint</strong><br> Move the dot to gain enough momentum to reach the flag. </p>
@@ -103,7 +112,13 @@ document.addEventListener("keyup", e => { if (e.key in keys) keys[e.key] = false
 function mountainY(x) { return Math.sin(3*x)*0.45 + 0.55; }
 function slope(x) { return 3*Math.cos(3*x)*0.45; }
 function worldToCanvasX(x) { return ((x + 1.2) / 1.8) * canvas.width; }
-function worldToCanvasY(y) { return canvas.height - (y * canvas.height); }
+const TOP_PAD = 25;
+const BOT_PAD = 15;
+
+function worldToCanvasY(y) {
+    const usable = canvas.height - TOP_PAD - BOT_PAD;
+    return canvas.height - BOT_PAD - y * usable;
+}
 
 // --- Timer ---
 function getCurrentTime() { return stageStartTime ? (performance.now() - stageStartTime)/1000 : 0; }
@@ -141,9 +156,8 @@ function draw(state) {
     // Terrain
     ctx.beginPath();
     for (let px=0; px<canvas.width; px++) {
-        const x = -1.2 + (px/canvas.width)*1.8;
-        // scale terrain so top isn't cut off
-        const y = mountainY(x) * 0.9 + 0.05; 
+        const x = -1.2 + (px/canvas.width)*1.8; 
+        const y = mountainY(x);
         const py = worldToCanvasY(y);
         if (px===0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
@@ -154,7 +168,7 @@ function draw(state) {
 
     // Car as a dot
     const carX = worldToCanvasX(pos);
-    const carY = worldToCanvasY(mountainY(pos) * 0.9 + 0.05);
+    const carY = worldToCanvasY(mountainY(pos));
     ctx.beginPath();
     ctx.arc(carX, carY, 5, 0, 2*Math.PI);
     ctx.fillStyle = "red";
@@ -167,7 +181,19 @@ function draw(state) {
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(fx, fy);
-    ctx.lineTo(fx, fy-30); // shorter pole so it fits
+    const flagHeight = 20;
+
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx, fy - flagHeight);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(fx, fy - flagHeight);
+    ctx.lineTo(fx + 10, fy - flagHeight + 10);
+    ctx.lineTo(fx, fy - flagHeight + 15);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
     ctx.fillStyle = "green";
     ctx.beginPath();

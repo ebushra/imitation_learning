@@ -213,33 +213,48 @@ drawPreview();
 
 // --- DRAW GAME ---
 function drawOverlay(state, goalX) {
-  ctx.clearRect(0,0,overlay.width, overlay.height);
+    ctx.clearRect(0,0,overlay.width, overlay.height);
 
-  ctx.beginPath();
-  for(let px=0; px<overlay.width; px++) {
-    const x = -1.2 + (px/overlay.width)*1.8;
-    const py = worldToCanvasY(mountainY(x));
-    if(px===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-  }
-  ctx.stroke();
+    // Terrain (RESTORED EXACT STYLE)
+    ctx.beginPath();
+    for(let px=0; px<overlay.width; px++) {
+        const x = -1.2 + (px/overlay.width)*1.8;
+        const py = worldToCanvasY(mountainY(x));
+        if(px===0) ctx.moveTo(px,py);
+        else ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;   // 👈 THIS was important
+    ctx.stroke();
 
-  const pos = state[0];
-  const carX = worldToCanvasX(pos);
-  const carY = worldToCanvasY(mountainY(pos));
+    // Car (UNCHANGED)
+    const pos = state[0];
+    const carX = worldToCanvasX(pos);
+    const carY = worldToCanvasY(mountainY(pos));
 
-  ctx.beginPath();
-  ctx.arc(carX, carY, 5, 0, 2*Math.PI);
-  ctx.fillStyle = "red";
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(carX, carY, 5, 0, 2*Math.PI);
+    ctx.fillStyle = "red";
+    ctx.fill();
 
-  const fx = worldToCanvasX(goalX);
-  const fy = worldToCanvasY(mountainY(goalX));
+    // Goal flag (RESTORED EXACT STYLE)
+    const fx = worldToCanvasX(goalX);
+    const fy = worldToCanvasY(mountainY(goalX));
 
-  ctx.strokeStyle = "green";
-  ctx.beginPath();
-  ctx.moveTo(fx, fy);
-  ctx.lineTo(fx, fy-30);
-  ctx.stroke();
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(fx, fy-30);
+    ctx.stroke();
+
+    ctx.fillStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(fx, fy-30);
+    ctx.lineTo(fx+10, fy-20);
+    ctx.lineTo(fx, fy-10);
+    ctx.closePath();
+    ctx.fill();
 }
 
 // --- COUNTDOWN ---

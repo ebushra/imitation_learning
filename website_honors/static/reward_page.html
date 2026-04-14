@@ -63,12 +63,12 @@
 
 <script>
 function getOrCreateUserId() {
-  let id = localStorage.getItem("user_id");
+  let id = localStorage.getItem("session_id");
 
   if (!id) {
     // fallback (shouldn't happen if backend already created one)
     id = crypto.randomUUID();
-    localStorage.setItem("user_id", id);
+    localStorage.setItem("session_id", id);
   }
 
   return id;

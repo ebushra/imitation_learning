@@ -333,18 +333,24 @@ function updateUI(){
 
 async function resetStage(){
 
- resetting=true;
+ resetting = true;
 
- const res = await fetch(`${API_BASE}/reset`, {method:"POST"});
+ const res = await fetch(`${API_BASE}/reset`, {
+  method: "POST",
+  headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({
+    training: true
+  })
+ });
+
  const data = await res.json();
 
  state = data.state;
-
  stageStartTime = performance.now();
 
- resetting=false;
+ resetting = false;
 }
-
+  
 function checkTraining(tipY){
   if(tipY <= STAGES[stageIndex].targetY){
   
@@ -370,12 +376,21 @@ async function step(){
 
  const action = getAction();
 
- const res = await fetch(`${API_BASE}/step/${action}`, {method:"POST"});
+ const res = await fetch(`${API_BASE}/step/${action}`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    training: true
+  })
+ });
+
  const data = await res.json();
 
  state = data.state;
 
- const tipY = draw(state[0],state[1]);
+ const tipY = draw(state[0], state[1]);
 
  updateUI();
 

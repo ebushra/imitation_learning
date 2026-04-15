@@ -260,11 +260,7 @@ function drawAcrobot(theta1,theta2){
 
 /* ---------------- LOOP ---------------- */
 async function gameLoop(){
-  if (frozen) {
-    requestAnimationFrame(gameLoop);
-    return;
-  }
-  
+
   await step();
 
   timerEl.textContent =

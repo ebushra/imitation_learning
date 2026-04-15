@@ -102,7 +102,11 @@ button{
     padding:20px;
     border-radius:8px;
     font-size:18px;
-  " id="modalText"></div>
+  ">
+    <div id="modalText"></div>
+    <br/>
+    <button id="modalOkBtn">OK</button>
+  </div>
 </div>
 
 <div id="introBox">
@@ -170,11 +174,23 @@ const keys={ArrowLeft:false,ArrowRight:false};
 const modal = document.getElementById("modal");
 const modalText = document.getElementById("modalText");
 
+let modalResolver = null;
+
+document.getElementById("modalOkBtn").onclick = () => {
+  hideModal();
+  if (modalResolver) modalResolver();
+  modalResolver = null;
+};
+
 function showModal(msg){
   modalText.textContent = msg;
   modal.style.display = "flex";
-}
 
+  return new Promise(resolve => {
+    modalResolver = resolve;
+  });
+}
+  
 function hideModal(){
   modal.style.display = "none";
 }
@@ -394,18 +410,12 @@ async function checkTraining(tipY){
   
       localStorage.setItem("acrobot_training_complete","1");
   
-      showModal("Training complete!");
-      await sleep(1500);
-
-      hideModal();
+      awwait showModal("Training complete!");
       window.location.href = "/static/acrobot.html"; 
   
     } else {
-      showModal("Next stage");
-      await sleep(1000);
-
-      hideModal();
-      resetStage();
+      await showModal("Next stage");
+      await resetStage();
       paused = false;
     }
   }

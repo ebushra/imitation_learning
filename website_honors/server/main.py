@@ -114,6 +114,7 @@ def serve_static(filename):
 @app.route("/acrobot/reset", methods=["POST"])
 def reset_acrobot():
     env = get_envs()
+    rec = get_recorders()
 
     env["acrobot"].reset()
     rec["acrobot"].new_episode()
@@ -126,6 +127,7 @@ def reset_acrobot():
 @app.route("/acrobot/step/<int:action>", methods=["POST"])
 def step_acrobot(action):
     env = get_envs()
+    rec = get_recorders()
 
     obs, reward, done = env["acrobot"].step(action)
     rec["acrobot"].log(
@@ -154,6 +156,7 @@ def new_session():
 @app.route("/mountaincar/reset", methods=["POST"])
 def reset_mountaincar():
     env = get_envs()
+    rec = get_recorders()
 
     data = request.json or {}
     training = data.get("training", False)
@@ -170,6 +173,7 @@ def reset_mountaincar():
 @app.route("/mountaincar/step", methods=["POST"])
 def step_mountaincar():
     env = get_envs()
+    rec = get_recorders()
 
     data = request.json or {}
     action = int(data.get("action", 0))
@@ -200,6 +204,7 @@ from .utils.render import render_frame
 @app.route("/cartpole/reset", methods=["POST"])
 def reset_cartpole():
     env = get_envs()
+    rec = get_recorders()
 
     data = request.json or {}
     training = data.get("training", False)
@@ -221,6 +226,7 @@ def reset_cartpole():
 @app.route("/cartpole/step/<int:action>", methods=["POST"])
 def step_cartpole(action):
     env = get_envs()
+    rec = get_recorders()
 
     obs, reward, terminated, truncated, info = env["cartpole"].step(action)
 

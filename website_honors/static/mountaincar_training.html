@@ -419,11 +419,12 @@ async function trainingStep() {
 
     if(stageIndex >= TRAINING_STAGES.length) {
       localStorage.setItem("mountaincarUnlocked","true");
+      paused = true;
       await showModal("Training Complete!");
       window.location.href = "/mountaincar.html";
       return;
     }
-
+    paused = true;
     await showModal("Next Stage.");
     await resetStage();
     paused = false;

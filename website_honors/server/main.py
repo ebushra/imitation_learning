@@ -27,7 +27,8 @@ class GameRecorder:
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
-        self.filepath = f"{DATA_DIR}/{name}.csv"
+        sid = get_session_id()
+        self.filepath = f"{DATA_DIR}/{name}_{sid}.csv"
 
         # Check if file exists or is empty
         file_exists = os.path.exists(self.filepath)
@@ -68,12 +69,24 @@ class GameRecorder:
             self.file.flush()
 
 # Create recorders
-acrobot_rec = GameRecorder("acrobot")
-mountaincar_rec = GameRecorder("mountaincar")
-cartpole_rec = GameRecorder("cartpole")
+recorders = {}
+
+def get_recorders():
+    sid = get_session_id()
+    if sid not in recorders:
+        recorders[sid] = {
+            "acrobot": GameRecorder(f"acrobot_{sid}"),
+            "mountaincar": GameRecorder(f"mountaincar_{sid}"),
+            "cartpole": GameRecorder(f"cartpole_{sid}")
+        }
+    return recorders[sid]
 
 # Environment storage
 envs = {}
+
+@app.route("/get_session_id")
+def get_session():
+    return jsonify({"session_id": get_session_id()})
 
 def get_session_id():
     if "session_id" not in session:
@@ -103,7 +116,7 @@ def reset_acrobot():
     env = get_envs()
 
     env["acrobot"].reset()
-    acrobot_rec.new_episode()
+    rec["acrobot"].new_episode()
 
     return jsonify({
         "state": env["acrobot"].get_state(),
@@ -115,7 +128,7 @@ def step_acrobot(action):
     env = get_envs()
 
     obs, reward, done = env["acrobot"].step(action)
-    acrobot_rec.log(
+    rec["acrobot"].log(
         state=obs,
         action=action,
         reward=reward,
@@ -147,7 +160,7 @@ def reset_mountaincar():
     goal = data.get("goalX", 0.5)
 
     obs = env["mountaincar"].reset(training_mode=training, goal_x=goal)
-    mountaincar_rec.new_episode()
+    rec["mountaincar"].new_episode()
 
     return jsonify({
         "state": list(map(float, obs)),
@@ -165,7 +178,7 @@ def step_mountaincar():
 
     data = request.json or {}
     training = data.get("training", False)
-    mountaincar_rec.log(
+    rec["mountaincar"].log(
         state=obs,
         action=action,
         reward=reward,
@@ -192,7 +205,7 @@ def reset_cartpole():
     training = data.get("training", False)
 
     env["cartpole"].reset(training=training)
-    cartpole_rec.new_episode()
+    rec["cartpole"].new_episode()
 
     x, x_dot, theta, theta_dot = env["cartpole"].get_state()
 
@@ -215,7 +228,7 @@ def step_cartpole(action):
     done = terminated
     data = request.json or {}
     training = data.get("training", False)
-    cartpole_rec.log(
+    rec["cartpole"].log(
         state=obs,
         action=action,
         reward=reward,

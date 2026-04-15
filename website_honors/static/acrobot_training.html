@@ -78,37 +78,12 @@ button{
   text-shadow: 1px 1px 2px white;
 }
 
-/* ===== MODAL (ADDED) ===== */
-#modal{
-  display:none;
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.5);
-  align-items:center;
-  justify-content:center;
-  z-index:10000;
-}
-
-#modalBox{
-  background:white;
-  padding:20px;
-  border-radius:8px;
-  font-size:18px;
-}
 </style>
 </head>
 
 <body>
 
 <h2>Acrobot Training</h2>
-
-<!-- MODAL (ADDED) -->
-<div id="modal">
-  <div id="modalBox"></div>
-</div>
 
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
@@ -158,18 +133,6 @@ const timerEl = document.getElementById("timer");
 const stageInfo = document.getElementById("stageInfo");
 const countdownEl = document.getElementById("countdown");
 
-const modal = document.getElementById("modal");
-const modalBox = document.getElementById("modalBox");
-
-function showModal(msg){
-  modalBox.textContent = msg;
-  modal.style.display = "flex";
-}
-
-function hideModal(){
-  modal.style.display = "none";
-}
-
 const originY = 35;
 const L1 = 60;
 const L2 = 60;
@@ -209,7 +172,7 @@ function sleep(ms){
 }
 
 /* =========================
-   PREVIEW ANIMATION
+   PREVIEW ANIMATION (looping swing)
 ========================= */
 
 let previewT = 0;
@@ -224,8 +187,10 @@ function drawPreviewFrame(){
   const ox = w/2;
   const oy = 20;
 
+  // --- fake swinging motion ---
   previewT += 0.05;
 
+  // smooth swing build-up
   const theta1 = Math.sin(previewT) * 0.8;
   const theta2 = Math.sin(previewT * 1.5) * 0.9;
 
@@ -235,6 +200,7 @@ function drawPreviewFrame(){
   const x2 = x1 + 40*Math.sin(theta1 + theta2);
   const y2 = y1 + 40*Math.cos(theta1 + theta2);
 
+  // links
   pctx.beginPath();
   pctx.moveTo(ox,oy);
   pctx.lineTo(x1,y1);
@@ -243,15 +209,43 @@ function drawPreviewFrame(){
   pctx.lineWidth=2;
   pctx.stroke();
 
+  // base
+  pctx.fillStyle="black";
+  pctx.beginPath();
+  pctx.arc(ox,oy,3,0,Math.PI*2);
+  pctx.fill();
+
+  // 🔵 middle joint
+  pctx.fillStyle="blue";
+  pctx.beginPath();
+  pctx.arc(x1,y1,5,0,Math.PI*2);
+  pctx.fill();
+
+  // end
+  pctx.fillStyle="black";
+  pctx.beginPath();
+  pctx.arc(x2,y2,3,0,Math.PI*2);
+  pctx.fill();
+
+  // target line
+  const targetY = 40;
+
+  pctx.beginPath();
+  pctx.setLineDash([4,4]);
+  pctx.strokeStyle="red";
+  pctx.moveTo(0,targetY);
+  pctx.lineTo(w,targetY);
+  pctx.stroke();
+  pctx.setLineDash([]);
+
   requestAnimationFrame(drawPreviewFrame);
 }
 
+// start animation
 drawPreviewFrame();
-
 /* =========================
    COUNTDOWN
 ========================= */
-
 async function runCountdown(){
 
   document.getElementById("introBox").style.display = "none";
@@ -277,7 +271,6 @@ async function runCountdown(){
 /* =========================
    MAIN DRAW
 ========================= */
-
 function draw(theta1,theta2){
 
  const w=canvas.width;
@@ -299,6 +292,21 @@ function draw(theta1,theta2){
  ctx.lineWidth=2;
  ctx.stroke();
 
+ ctx.fillStyle="black";
+ ctx.beginPath();
+ ctx.arc(ox,originY,3,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.fillStyle="blue";
+ ctx.beginPath();
+ ctx.arc(x1,y1,4,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.fillStyle="black";
+ ctx.beginPath();
+ ctx.arc(x2,y2,3,0,Math.PI*2);
+ ctx.fill();
+
  const ty=STAGES[stageIndex].targetY;
 
  ctx.beginPath();
@@ -313,7 +321,7 @@ function draw(theta1,theta2){
 }
 
 /* =========================
-   LOGIC
+   REST OF LOGIC (UNCHANGED)
 ========================= */
 
 function updateUI(){
@@ -330,7 +338,9 @@ async function resetStage(){
  const res = await fetch(`${API_BASE}/reset`, {
   method: "POST",
   headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({ training: true })
+  body: JSON.stringify({
+    training: true
+  })
  });
 
  const data = await res.json();
@@ -340,34 +350,25 @@ async function resetStage(){
 
  resetting = false;
 }
-
+  
 function checkTraining(tipY){
   if(tipY <= STAGES[stageIndex].targetY){
-
+  
     stageIndex++;
-
+  
     if(stageIndex >= STAGES.length){
-
+  
       localStorage.setItem("acrobot_training_complete","1");
-
-      showModal("Training complete!");
+  
+      alert("Training complete!");
       resetting = true;
-
-      setTimeout(()=>{
-        window.location.href = "/static/acrobot.html";
-      }, 1000);
-
+      window.location.href = "/static/acrobot.html"; 
+  
     } else {
-
       resetting = true;
-
-      showModal("Next stage");
-
-      setTimeout(()=>{
-        hideModal();
-        resetting = false;
-        resetStage();
-      }, 800);
+      alert("Next stage");
+      resetting = false;
+      resetStage();
     }
   }
 }
@@ -380,8 +381,12 @@ async function step(){
 
  const res = await fetch(`${API_BASE}/step/${action}`, {
   method: "POST",
-  headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({ training: true })
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    training: true
+  })
  });
 
  const data = await res.json();

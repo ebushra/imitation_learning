@@ -361,13 +361,13 @@ function checkTraining(tipY){
       localStorage.setItem("acrobot_training_complete","1");
   
       alert("Training complete!");
-      paused = true;
+      resetting = true;
       window.location.href = "/static/acrobot.html"; 
   
     } else {
-      paused = true;
+      resetting = true;
       alert("Next stage");
-      paused = false;
+      resetting = false;
       resetStage();
     }
   }

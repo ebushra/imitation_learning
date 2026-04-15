@@ -18,7 +18,7 @@ from .utils.render import render_frame
 app = Flask(__name__, static_folder="../static")
 app.secret_key = "dev-secret-key"
 
-DATA_DIR = "human_data"
+DATA_DIR = "/var/data/human_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 class GameRecorder:

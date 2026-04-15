@@ -384,7 +384,7 @@ async function resetStage(){
  resetting = false;
 }
   
-function checkTraining(tipY){
+async function checkTraining(tipY){
   if(tipY <= STAGES[stageIndex].targetY){
 
     paused = true;

@@ -163,6 +163,7 @@ let state=null;
 let stageStartTime=null;
 let resetting=false;
 let started=false;
+let paused = false;
 
 const keys={ArrowLeft:false,ArrowRight:false};
 
@@ -385,7 +386,8 @@ async function resetStage(){
   
 function checkTraining(tipY){
   if(tipY <= STAGES[stageIndex].targetY){
-  
+
+    paused = true;
     stageIndex++;
   
     if(stageIndex >= STAGES.length){
@@ -393,18 +395,25 @@ function checkTraining(tipY){
       localStorage.setItem("acrobot_training_complete","1");
   
       showModal("Training complete!");
+      await sleep(1500);
+
+      hideModal();
       window.location.href = "/static/acrobot.html"; 
   
     } else {
       showModal("Next stage");
+      await sleep(1000);
+
+      hideModal();
       resetStage();
+      paused = false;
     }
   }
 }
 
 async function step(){
 
- if(!started || resetting || !state) return;
+ if(!started || resetting || !state || paused) return;
 
  const action = getAction();
 

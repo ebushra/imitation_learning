@@ -102,6 +102,7 @@ const modal = document.getElementById("instructionsModal");
 function showModal() {
   paused = true;
   modal.style.display = "flex";
+  startTime = performance.now(); 
 }
 
 function hideModal() {

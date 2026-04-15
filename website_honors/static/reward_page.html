@@ -67,14 +67,24 @@ function getOrCreateUserId() {
 
   if (!id) {
     // fallback (shouldn't happen if backend already created one)
-    id = crypto.randomUUID();
     localStorage.setItem("session_id", id);
   }
 
   return id;
 }
 
-const userId = getOrCreateUserId();
+async function fetchSessionId() {
+  const res = await fetch("/get_session_id");
+  const data = await res.json();
+  return data.session_id;
+}
+
+let userId = "Loading...";
+
+fetchSessionId().then(id => {
+  userId = id;
+  document.getElementById("codeBox").textContent = id;
+});
 document.getElementById("codeBox").textContent = userId;
 
 function copyCode() {

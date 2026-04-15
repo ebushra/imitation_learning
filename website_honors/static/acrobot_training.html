@@ -85,6 +85,26 @@ button{
 
 <h2>Acrobot Training</h2>
 
+<div id="modal" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+">
+  <div style="
+    background:white;
+    padding:20px;
+    border-radius:8px;
+    font-size:18px;
+  " id="modalText"></div>
+</div>
+
 <div id="introBox">
   <p><strong>Welcome!</strong></p>
   <p>This task has <strong>two training stages</strong>.You will learn how to swing the bottom of the Acrobot to reach a target line.</p>
@@ -145,6 +165,18 @@ let resetting=false;
 let started=false;
 
 const keys={ArrowLeft:false,ArrowRight:false};
+
+const modal = document.getElementById("modal");
+const modalText = document.getElementById("modalText");
+
+function showModal(msg){
+  modalText.textContent = msg;
+  modal.style.display = "flex";
+}
+
+function hideModal(){
+  modal.style.display = "none";
+}
 
 document.addEventListener("keydown",e=>{
  if(e.key in keys) keys[e.key]=true;
@@ -360,14 +392,11 @@ function checkTraining(tipY){
   
       localStorage.setItem("acrobot_training_complete","1");
   
-      alert("Training complete!");
-      resetting = true;
+      showModal("Training complete!");
       window.location.href = "/static/acrobot.html"; 
   
     } else {
-      resetting = true;
-      alert("Next stage");
-      resetting = false;
+      showModal("Next stage");
       resetStage();
     }
   }

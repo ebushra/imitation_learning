@@ -27,20 +27,31 @@ class GameRecorder:
         self.episode = 0
         self.step = 0
         self.start_time = time.time()
+
         sid = get_session_id()
+        self.user_id = sid
+
         self.filepath = f"{DATA_DIR}/{name}_{sid}.csv"
 
-        # Check if file exists or is empty
         file_exists = os.path.exists(self.filepath)
         file_empty = not file_exists or os.stat(self.filepath).st_size == 0
 
         self.file = open(self.filepath, "a", newline="")
         self.writer = csv.writer(self.file)
 
+        # write header once
         if file_empty:
             self.writer.writerow([
-                "timestamp", "user_id", "episode", "step", "elapsed",
-                "state", "action", "reward", "done", "success", "training"
+                "user_id",
+                "episode",
+                "step",
+                "t",
+                "action",
+                "reward",
+                "done",
+                "success",
+                "training",
+                "state"
             ])
             self.file.flush()
 
@@ -51,21 +62,26 @@ class GameRecorder:
 
     def log(self, state, action, reward, done, success, training=False):
         self.step += 1
-        elapsed = time.time() - self.start_time
+
+        t = time.time() - self.start_time
+
+        # flatten state (NO brackets)
+        state_flat = [float(x) for x in state]
+
         self.writer.writerow([
-            time.time(),
-            get_session_id(),  # add user/session id
+            self.user_id,
             self.episode,
             self.step,
-            elapsed,
-            list(map(float, state)),
+            t,
             action,
             reward,
             done,
             success,
-            training          # mark whether this is training data
+            training,
+            *state_flat
         ])
-        if self.step % 50 == 0 or done:
+
+        if self.step % 20 == 0 or done:
             self.file.flush()
 
 # Create recorders
@@ -129,14 +145,17 @@ def step_acrobot(action):
     env = get_envs()
     rec = get_recorders()
 
+    data = request.get_json(silent=True) or {}
+    training = data.get("training")
+
     obs, reward, done = env["acrobot"].step(action)
     rec["acrobot"].log(
         state=obs,
         action=action,
         reward=reward,
         done=done,
-        success=not done,
-        training=False
+        success=done,
+        training=training
     )
 
     return jsonify({
@@ -187,7 +206,7 @@ def step_mountaincar():
         action=action,
         reward=reward,
         done=done,
-        success=not done,
+        success=done,
         training=training
     )
 

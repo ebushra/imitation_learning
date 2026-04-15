@@ -410,7 +410,7 @@ async function checkTraining(tipY){
   
       localStorage.setItem("acrobot_training_complete","1");
   
-      awwait showModal("Training complete!");
+      await showModal("Training complete!");
       window.location.href = "/static/acrobot.html"; 
   
     } else {

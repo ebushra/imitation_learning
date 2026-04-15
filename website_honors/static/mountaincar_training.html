@@ -94,7 +94,12 @@ button{
     padding:20px;
     border-radius:8px;
     font-size:18px;
-  " id="modalText"></div>
+    text-align:center;
+  ">
+    <div id="modalText"></div>
+    <br/>
+    <button id="modalOkBtn">OK</button>
+  </div>
 </div>
 
 <!-- INTRO -->
@@ -151,13 +156,30 @@ let paused = false;
 const modal = document.getElementById("modal");
 const modalText = document.getElementById("modalText");
 
-function showModal(msg){
+let modalResolve = null;
+
+document.getElementById("modalOkBtn").addEventListener("click", () => {
+  hideModal();
+});
+
+function showModal(msg) {
   modalText.textContent = msg;
   modal.style.display = "flex";
+  paused = true;
+
+  return new Promise(resolve => {
+    modalResolve = resolve;
+  });
 }
 
-function hideModal(){
+function hideModal() {
   modal.style.display = "none";
+  paused = false;
+
+  if (modalResolve) {
+    modalResolve();
+    modalResolve = null;
+  }
 }
 
 // --- Training stages (UNCHANGED) ---

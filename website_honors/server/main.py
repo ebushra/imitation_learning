@@ -93,7 +93,6 @@ def get_recorders():
         recorders[sid] = {
             "acrobot": GameRecorder(f"acrobot_{sid}"),
             "mountaincar": GameRecorder(f"mountaincar_{sid}"),
-            "cartpole": GameRecorder(f"cartpole_{sid}")
         }
     return recorders[sid]
 

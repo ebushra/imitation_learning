@@ -73,6 +73,7 @@
 <canvas id="acrobotCanvas" width="220" height="220"></canvas>
 
 <h3 id="timer">Time: 0.0 s</h3>
+<p id="roundInfo" style="font-size:14px; margin-top:4px;"></p>
 
 <div class="instructions">
   <p><strong>Goal</strong><br>Reach the red line with the bottom joint as fast as possible. Complete at least <strong>5 rounds</strong></p>
@@ -95,6 +96,7 @@
 </div>
 
 <script>
+const TOTAL_ROUNDS = 5;
 let frozen = false;
 let paused = true; 
 const startBtn = document.getElementById("startTrainingBtn");
@@ -110,6 +112,14 @@ function hideModal() {
   paused = false;
 }
 
+function updateRoundInfo() {
+  const completed = laps.length;
+  const left = Math.max(0, TOTAL_ROUNDS - completed);
+
+  document.getElementById("roundInfo").textContent =
+    `Rounds: ${completed} / ${TOTAL_ROUNDS} | Rounds left: ${left}`;
+}
+
 const popup = document.getElementById("endPopup");
 const goNextGameBtn = document.getElementById("goNextGameBtn");
 const moreDataBtn = document.getElementById("moreDataBtn");
@@ -119,6 +129,8 @@ const continueBtn = document.getElementById("continueBtn");
 startBtn.addEventListener("click", async () => {
     hideModal();
     await reset();
+    laps = [];              // important reset
+    updateRoundInfo();
 });
 // --- gate ---
 if(!localStorage.getItem("acrobot_training_complete")){
@@ -156,6 +168,7 @@ document.body.appendChild(lapDiv);
 
 function recordLap(time){
   laps.push(time);
+  updateRoundInfo();
 
   lapDiv.innerHTML =
     laps.map((t,i)=>`Round ${i+1}: ${t.toFixed(2)} s`).join("<br>");
@@ -198,6 +211,7 @@ async function reset(){
 
   state = data.state;
   startTime = performance.now();
+  updateRoundInfo();
 }
 
 /* ---------------- STEP ---------------- */

@@ -102,6 +102,7 @@
 
 <p id="timer">Time: 0 s</p>
 <div id="laps"></div>
+<p id="roundInfo" style="font-size:14px; margin-top:4px;"></p>
 
 <div class="instructions">
     <p><strong>Goal:</strong> Reach the green line at the top of the hill. Please complete at least <strong>5 rounds.</strong></p>
@@ -117,6 +118,7 @@ if (localStorage.getItem("mountaincarUnlocked") !== "true") {
   alert("You must complete training first.");
   window.location.href = "/static/mountaincar_training.html";
 }
+const TOTAL_ROUNDS = 5;
 let loopRunning = false;
 let paused = true;
 let pauseStart = 0;
@@ -143,6 +145,14 @@ let laps = [];
 
 let dataModalShown = false;
 let dataCollectionMode = false;
+
+function updateRoundInfo() {
+  const completed = laps.length;
+  const left = Math.max(0, TOTAL_ROUNDS - completed);
+
+  document.getElementById("roundInfo").textContent =
+    `Rounds: ${completed} / ${TOTAL_ROUNDS} | Rounds left: ${left}`;
+}
 
 // ---------------- Controls ----------------
 document.addEventListener("keydown", e => {
@@ -283,6 +293,7 @@ async function resetStage() {
   const data = await res.json();
   stageStartTime = performance.now();
   draw(data.state);
+  updateRoundInfo();
 }
 
 // ---------------- LOOP ----------------
@@ -323,6 +334,7 @@ async function loop(t) {
     if (data.done) {
       laps.push(getTime().toFixed(1));
       updateLaps();
+      updateRoundInfo();
       await resetStage();
     }
   }
@@ -337,6 +349,8 @@ document.getElementById("startTrainingBtn").onclick = async () => {
   await resetStage();
   running = true;
   startLoop();
+  laps = [];              // important reset
+  updateRoundInfo();
 };
 
 document.getElementById("giveDataBtn").onclick = async () => {

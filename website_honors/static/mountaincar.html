@@ -109,9 +109,6 @@
 </div>
 
 <div id="laps"></div>
-
-
-
 <button id="resetBtn">Reset</button>
 <button id="finishBtn" style="display:none;">Finish</button>
 
@@ -153,7 +150,7 @@ function updateRoundInfo() {
   const left = Math.max(0, TOTAL_ROUNDS - completed);
 
   document.getElementById("roundInfo").textContent =
-    `Rounds: ${completed} / ${TOTAL_ROUNDS} | Rounds left: ${left}`;
+    `<strong>Rounds:</strong> ${completed} / ${TOTAL_ROUNDS} | <strong>Rounds left:</strong> ${left}`;
 }
 
 // ---------------- Controls ----------------

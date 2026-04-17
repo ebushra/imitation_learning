@@ -454,9 +454,14 @@ async function trainingStep() {
     return;
   }
 
-  if(getCurrentTime() > stage.duration) {
-    showModal("Time expired");
+  if (getCurrentTime() > stage.duration) {
+    paused = true;
+  
+    await showModal("Time expired");
+    stageStartTime = performance.now(); 
     await resetStage();
+  
+    paused = false;
     requestAnimationFrame(trainingStep);
     return;
   }

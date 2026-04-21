@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Grant Page</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 60px;
+      background: #f5f5f5;
+    }
+
+    .box {
+      display: inline-block;
+      background: white;
+      padding: 30px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      max-width: 500px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 16px;
+      margin: 10px 0;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 18px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h1>Grant Page</h1>
+    <p>This is a placeholder page.</p>
+    <p>You can put instructions, survey links, or results here.</p>
+
+    <button onclick="goHome()">Go Back</button>
+  </div>
+
+  <script>
+    function goHome() {
+      window.location.href = "/";
+    }
+  </script>
+
+</body>
+</html>

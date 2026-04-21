@@ -118,12 +118,6 @@ def get_envs():
         }
     return envs[sid]
 
-from flask import send_from_directory
-
-@app.route("/grant")
-def grant_page():
-    return send_from_directory("static", "grant.html")
-
 @app.route("/")
 def root():
     return redirect("/static/consent.html")

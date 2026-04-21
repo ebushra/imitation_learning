@@ -1,56 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Grant Page</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      margin-top: 60px;
-      background: #f5f5f5;
-    }
+<meta charset="UTF-8" />
+<title>Grant Page</title>
 
-    .box {
-      display: inline-block;
-      background: white;
-      padding: 30px;
-      border: 2px solid #333;
-      border-radius: 8px;
-      max-width: 500px;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f1115;
+    color: #e6e6e6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
 
-    h1 {
-      margin-bottom: 10px;
-    }
+  .card {
+    background: #1a1d24;
+    border: 1px solid #2a2f3a;
+    border-radius: 10px;
+    padding: 30px;
+    width: 420px;
+    text-align: left;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+  }
 
-    p {
-      font-size: 16px;
-      margin: 10px 0;
-    }
+  h1 {
+    margin-top: 0;
+    font-size: 24px;
+  }
 
-    button {
-      margin-top: 20px;
-      padding: 10px 18px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+  p {
+    font-size: 14px;
+    color: #b8b8b8;
+    line-height: 1.4;
+  }
+
+
+  .footer {
+    margin-top: 15px;
+    font-size: 11px;
+    color: #777;
+  }
+</style>
 </head>
+
 <body>
 
-  <div class="box">
-    <h1>Grant Page</h1>
-    <p>This is a placeholder page.</p>
-    <p>You can put instructions, survey links, or results here.</p>
+<div class="card">
+  <h1>Congratulations! 🎉👏💪</h1>
 
-    <button onclick="goHome()">Go Back</button>
+  <p>
+    Dear Grant,<br><br> Congratulations on your graduation!! I so happy to celebrate you and all you have
+    accomplished over your 3 years at GCU (pRivATe, CHriSTiAn, aFforDaBlE). 
+    <br> <br>
+    You're the brightest man I know! It's not everyday you meet someone that could hack a website in his sleep
+    or code a whole web application in a couple days. Just don't use that resourcefulness to hack my website, please. Sorry, but it probably
+    does not follow the confidentiality, integrity, and availability principles you've taught me. 
+    <br><br>
+    I’m so thankful that God brought our paths together. It’s been such a gift to see how He has worked in both of our lives through 
+    the people and communities around us. I really admire how you seek to grow that community through the apps you create for others.
+    I know God will continue to use you and your coding to bring others to Himself!! You're gonna kill it as a software developer!
+    <br><br>
+    I will miss you dearly while you are in Washington, but I cannot wait to be reunited with you in a few weeks! It is truly an honor
+    to know you. 
+    <br><br>
+    I love you so much :)
+    <br>
+    Elise
+    
+  </p>
+
+
+  <div class="footer">
+    P.S. I made it dark mode so I wouldn't flashbang you!
   </div>
-
-  <script>
-    function goHome() {
-      window.location.href = "/";
-    }
-  </script>
+</div>
 
 </body>
 </html>

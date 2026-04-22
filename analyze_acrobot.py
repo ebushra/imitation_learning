@@ -47,14 +47,22 @@ print("\nTotal rows:", len(df))
 # PARSE STATE
 # =========================
 
+import json
+import numpy as np
+
 def parse_state(s):
     try:
-        if isinstance(s, str):
-            return np.array(json.loads(s), dtype=float)
-        return None
+        if not isinstance(s, str):
+            return None
+
+        return np.array(json.loads(s), dtype=float)
+
     except:
         return None
-
+print("NaN states:", df["state_parsed"].isna().sum())
+print("Example raw:", df["state"].iloc[0])
+print("Example parsed:", df["state_parsed"].iloc[0])
+        
 df["state_parsed"] = df["state"].apply(parse_state)
 
 # drop bad rows

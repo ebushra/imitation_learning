@@ -9,7 +9,6 @@ import uuid
 import numpy as np
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory, redirect
-import json
 
 from .envs.acrobot_env import WebAcrobot
 from .envs.mountaincar_env import WebMountainCar
@@ -61,34 +60,29 @@ class GameRecorder:
         self.step = 0
         self.start_time = time.time()
 
-import json
-import numpy as np
+    def log(self, state, action, reward, done, success, training=False):
+        self.step += 1
 
-def log(self, state, action, reward, done, success, training=False):
-    self.step += 1
-    t = time.time() - self.start_time
+        t = time.time() - self.start_time
 
-    # FORCE clean numeric list
-    if isinstance(state, np.ndarray):
-        state = state.tolist()
+        # flatten state (NO brackets)
+        state_flat = [float(x) for x in state]
 
-    state_str = json.dumps(state)
+        self.writer.writerow([
+            self.user_id,
+            self.episode,
+            self.step,
+            t,
+            action,
+            reward,
+            done,
+            success,
+            training,
+            *state_flat
+        ])
 
-    self.writer.writerow([
-        self.user_id,
-        self.episode,
-        self.step,
-        t,
-        action,
-        reward,
-        done,
-        success,
-        training,
-        state_str
-    ])
-
-    if self.step % 20 == 0 or done:
-        self.file.flush()
+        if self.step % 20 == 0 or done:
+            self.file.flush()
 
 # Create recorders
 recorders = {}

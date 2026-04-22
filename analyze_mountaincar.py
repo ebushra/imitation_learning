@@ -159,6 +159,3 @@ print("Average completion time:", episode_time.mean())
 if "success" in df.columns:
     success_rate = df.groupby("episode")["success"].max().mean()
     print("Success rate:", success_rate)
-
-print("Fast action distribution:", fast_actions.value_counts(normalize=True))
-print("Slow action distribution:", slow_actions.value_counts(normalize=True))

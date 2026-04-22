@@ -1,4 +1,4 @@
-import os
+  import os
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 import time
 import csv
@@ -65,9 +65,6 @@ class GameRecorder:
 
         t = time.time() - self.start_time
 
-        # flatten state (NO brackets)
-        state_flat = [float(x) for x in state]
-
         self.writer.writerow([
             self.user_id,
             self.episode,
@@ -78,7 +75,7 @@ class GameRecorder:
             done,
             success,
             training,
-            *state_flat
+            list(map(float, state)),
         ])
 
         if self.step % 20 == 0 or done:

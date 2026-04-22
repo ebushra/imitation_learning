@@ -16,7 +16,7 @@ DATA_DIR = "/var/data/human_data"
 PATTERN = os.path.join(DATA_DIR, "acrobot*.csv")
 
 # =========================
-# LOAD ALL FILES
+# LOAD FILES
 # =========================
 
 files = glob.glob(PATTERN)
@@ -29,10 +29,10 @@ dfs = []
 
 for f in files:
     try:
-        df = pd.read_csv(f)
-        df["source_file"] = os.path.basename(f)
-        dfs.append(df)
-        print(f"Loaded {f} with {len(df)} rows")
+        df_part = pd.read_csv(f)
+        df_part["source_file"] = os.path.basename(f)
+        dfs.append(df_part)
+        print(f"Loaded {f} with {len(df_part)} rows")
     except Exception as e:
         print(f"Failed to load {f}: {e}")
 
@@ -44,28 +44,33 @@ df = pd.concat(dfs, ignore_index=True)
 print("\nTotal rows:", len(df))
 
 # =========================
-# PARSE STATE
+# PARSE STATE (FIXED ORDER)
 # =========================
-
-import json
-import numpy as np
 
 def parse_state(s):
     try:
         if not isinstance(s, str):
             return None
-
         return np.array(json.loads(s), dtype=float)
-
     except:
         return None
+
+
+# 🔥 CREATE COLUMN FIRST (THIS WAS YOUR BUG)
+df["state_parsed"] = df["state"].apply(parse_state)
+
+# =========================
+# DEBUG (NOW SAFE)
+# =========================
+
 print("NaN states:", df["state_parsed"].isna().sum())
 print("Example raw:", df["state"].iloc[0])
 print("Example parsed:", df["state_parsed"].iloc[0])
-        
-df["state_parsed"] = df["state"].apply(parse_state)
 
-# drop bad rows
+# =========================
+# CLEAN DATA
+# =========================
+
 before = len(df)
 df = df.dropna(subset=["state_parsed"])
 after = len(df)
@@ -82,7 +87,6 @@ y = df["action"].astype(int).values
 print("\nDataset shape:", X.shape)
 print("Actions distribution:", np.bincount(y))
 
-# safety check (prevents your crash)
 if len(X) == 0:
     raise RuntimeError("No valid state data after parsing.")
 

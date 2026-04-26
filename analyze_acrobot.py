@@ -157,16 +157,7 @@ print("\n=== MODEL ROLLOUT (5 EPISODES) ===")
 env = gym.make("Acrobot-v1")
 
 def obs_to_model_state(obs):
-    """
-    Convert env observation → same format as training data
-    """
-    cos1, sin1, cos2, sin2, d1, d2 = obs
-
-    theta1 = np.arctan2(sin1, cos1)
-    theta2 = np.arctan2(sin2, cos2)
-
-    return np.array([theta1, theta2, d1, d2])
-
+    return np.array(obs, dtype=float)
 
 num_episodes = 5
 episode_steps = []

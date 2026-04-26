@@ -44,7 +44,7 @@ df = pd.concat(dfs, ignore_index=True)
 print("\nTotal rows:", len(df))
 
 # =========================
-# PARSE STATE
+# PARSE STATE (FIXED ORDER)
 # =========================
 
 def parse_state(s):
@@ -55,28 +55,22 @@ def parse_state(s):
     except:
         return None
 
+
 df["state_parsed"] = df["state"].apply(parse_state)
+
+print("NaN states:", df["state_parsed"].isna().sum())
+print("Example raw:", df["state"].iloc[0])
+print("Example parsed:", df["state_parsed"].iloc[0])
 
 # =========================
 # CLEAN DATA
 # =========================
 
+before = len(df)
 df = df.dropna(subset=["state_parsed"])
-print(len(df))
+after = len(df)
 
-# REMOVE TRAINING DATA
-if "training" in df.columns:
-    df = df[df["training"] == False]
-
-print("After removing training rows:", len(df))
-
-# REMOVE UNFINISHED EPISODES
-if "success" in df.columns:
-    finished_eps = df.groupby("episode")["success"].max()
-    finished_eps = finished_eps[finished_eps == True].index
-    df = df[df["episode"].isin(finished_eps)]
-
-print("After removing unfinished episodes:", len(df))
+print(f"Dropped {before - after} bad rows")
 
 # =========================
 # BUILD DATASET
@@ -86,7 +80,10 @@ X = np.vstack(df["state_parsed"].values)
 y = df["action"].astype(int).values
 
 print("\nDataset shape:", X.shape)
-print("Action distribution:", np.bincount(y))
+print("Actions distribution:", np.bincount(y))
+
+if len(X) == 0:
+    raise RuntimeError("No valid state data after parsing.")
 
 # =========================
 # TRAIN / TEST SPLIT
@@ -115,27 +112,16 @@ model.fit(X_train, y_train)
 # EVALUATION
 # =========================
 
-y_pred_test = model.predict(X_test)
-y_pred_train = model.predict(X_train)
+y_pred = model.predict(X_test)
 
-print("\n=== TEST RESULTS ===")
-print("Accuracy:", accuracy_score(y_test, y_pred_test))
+print("\n=== RESULTS ===")
+print("Accuracy:", accuracy_score(y_test, y_pred))
 
-print("\nConfusion Matrix (Test):")
-print("Rows = TRUE, Cols = PRED")
-print("      0   1   2")
-print(confusion_matrix(y_test, y_pred_test))
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
 
-print("\nClassification Report (Test):")
-print(classification_report(y_test, y_pred_test))
-
-print("\n=== TRAIN RESULTS ===")
-print("Accuracy:", accuracy_score(y_train, y_pred_train))
-
-print("\nConfusion Matrix (Train):")
-print("Rows = TRUE, Cols = PRED")
-print("      0   1   2")
-print(confusion_matrix(y_train, y_pred_train))
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
 
 # =========================
 # BASELINES
@@ -150,35 +136,68 @@ print("Random:", accuracy_score(y_test, random_preds))
 print("Majority:", accuracy_score(y_test, majority_preds))
 
 # =========================
-# HUMAN PERFORMANCE
+# EXTRA INSIGHT
 # =========================
 
-print("\n=== HUMAN PERFORMANCE ===")
+print("\nAverage episode length:")
+print(df.groupby("episode")["step"].max().mean())
 
-avg_steps = df.groupby("episode")["step"].max().mean()
-print("Average human steps:", avg_steps)
-
+print("\nSuccess rate:")
 if "success" in df.columns:
-    print("Success rate:", df["success"].mean())
-
+    print(df["success"].mean())
+    
 # =========================
-# MODEL STEP ESTIMATE (NEW)
+# MODEL ROLLOUT EVALUATION
 # =========================
 
-print("\n=== MODEL STEP ESTIMATE ===")
+import gymnasium as gym
 
-# approximate: how long model would take given its mistakes
-test_steps = df.iloc[y_test.index]["step"].values
+print("\n=== MODEL ROLLOUT (5 EPISODES) ===")
 
-# if correct → same step
-# if wrong → penalize (simulate inefficiency)
-penalty = 5  # tweak this if you want stricter penalty
+env = gym.make("Acrobot-v1")
 
-model_steps = []
-for i in range(len(y_test)):
-    if y_pred_test[i] == y_test[i]:
-        model_steps.append(test_steps[i])
-    else:
-        model_steps.append(test_steps[i] + penalty)
+def obs_to_model_state(obs):
+    """
+    Convert env observation → same format as training data
+    """
+    cos1, sin1, cos2, sin2, d1, d2 = obs
 
-print("Estimated model steps:", np.mean(model_steps))
+    theta1 = np.arctan2(sin1, cos1)
+    theta2 = np.arctan2(sin2, cos2)
+
+    return np.array([theta1, theta2, d1, d2])
+
+
+num_episodes = 5
+episode_steps = []
+successes = 0
+
+for ep in range(num_episodes):
+    obs, _ = env.reset()
+    done = False
+    steps = 0
+
+    while not done and steps < 500:  # safety cap
+        state = obs_to_model_state(obs).reshape(1, -1)
+
+        action = model.predict(state)[0]
+
+        obs, reward, terminated, truncated, _ = env.step(int(action))
+        done = terminated or truncated
+
+        steps += 1
+
+    episode_steps.append(steps)
+
+    if done and steps < 500:
+        successes += 1
+
+    print(f"Episode {ep+1}: {steps} steps")
+
+env.close()
+
+print("\n=== MODEL PERFORMANCE ===")
+print("Average steps:", np.mean(episode_steps))
+print("Min steps:", np.min(episode_steps))
+print("Max steps:", np.max(episode_steps))
+print("Success rate:", successes / num_episodes)

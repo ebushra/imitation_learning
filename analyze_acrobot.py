@@ -114,14 +114,24 @@ model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)
 
-print("\n=== RESULTS ===")
+print("\n=== TEST RESULTS ===")
 print("Accuracy:", accuracy_score(y_test, y_pred))
 
-print("\nConfusion Matrix:")
+print("\nConfusion Matrix on test set:")
+print("Rows = TRUE, Cols = PRED")
+print("      0   1   2")
 print(confusion_matrix(y_test, y_pred))
 
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred))
+
+print("\n=== TRAIN RESULTS ===")
+print("Accuracy:", accuracy_score(y_train, y_pred_train))
+
+print("\nConfusion Matrix (Train):")
+print("Rows = TRUE, Cols = PRED")
+print("      0   1   2")
+print(confusion_matrix(y_train, y_pred_train))
 
 # =========================
 # BASELINES
@@ -139,12 +149,11 @@ print("Majority:", accuracy_score(y_test, majority_preds))
 # EXTRA INSIGHT
 # =========================
 
-print("\nAverage episode length:")
+print("\nAverage human episode length (steps):")
 print(df.groupby("episode")["step"].max().mean())
 
 print("\nSuccess rate:")
-if "success" in df.columns:
-    print(df["success"].mean())
+print(df["done"].mean())
     
 # =========================
 # MODEL ROLLOUT EVALUATION

@@ -55,13 +55,14 @@ def parse_state(s):
     except:
         return None
 
-#df["state_parsed"] = df["state"].apply(parse_state)
+df["state_parsed"] = df["state"].apply(parse_state)
 
 # =========================
 # CLEAN DATA
 # =========================
 
-#df = df.dropna(subset=["state_parsed"])
+df = df.dropna(subset=["state_parsed"])
+print(len(df))
 
 # REMOVE TRAINING DATA
 if "training" in df.columns:

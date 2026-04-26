@@ -44,7 +44,7 @@ df = pd.concat(dfs, ignore_index=True)
 print("\nTotal rows:", len(df))
 
 # =========================
-# PARSE STATE (FIXED ORDER)
+# PARSE STATE
 # =========================
 
 def parse_state(s):
@@ -55,27 +55,27 @@ def parse_state(s):
     except:
         return None
 
-
-# 🔥 CREATE COLUMN FIRST (THIS WAS YOUR BUG)
 df["state_parsed"] = df["state"].apply(parse_state)
-
-# =========================
-# DEBUG (NOW SAFE)
-# =========================
-
-print("NaN states:", df["state_parsed"].isna().sum())
-print("Example raw:", df["state"].iloc[0])
-print("Example parsed:", df["state_parsed"].iloc[0])
 
 # =========================
 # CLEAN DATA
 # =========================
 
-before = len(df)
 df = df.dropna(subset=["state_parsed"])
-after = len(df)
 
-print(f"Dropped {before - after} bad rows")
+# REMOVE TRAINING DATA
+if "training" in df.columns:
+    df = df[df["training"] == False]
+
+print("After removing training rows:", len(df))
+
+# REMOVE UNFINISHED EPISODES
+if "success" in df.columns:
+    finished_eps = df.groupby("episode")["success"].max()
+    finished_eps = finished_eps[finished_eps == True].index
+    df = df[df["episode"].isin(finished_eps)]
+
+print("After removing unfinished episodes:", len(df))
 
 # =========================
 # BUILD DATASET
@@ -85,10 +85,7 @@ X = np.vstack(df["state_parsed"].values)
 y = df["action"].astype(int).values
 
 print("\nDataset shape:", X.shape)
-print("Actions distribution:", np.bincount(y))
-
-if len(X) == 0:
-    raise RuntimeError("No valid state data after parsing.")
+print("Action distribution:", np.bincount(y))
 
 # =========================
 # TRAIN / TEST SPLIT
@@ -117,16 +114,27 @@ model.fit(X_train, y_train)
 # EVALUATION
 # =========================
 
-y_pred = model.predict(X_test)
+y_pred_test = model.predict(X_test)
+y_pred_train = model.predict(X_train)
 
-print("\n=== RESULTS ===")
-print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\n=== TEST RESULTS ===")
+print("Accuracy:", accuracy_score(y_test, y_pred_test))
 
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+print("\nConfusion Matrix (Test):")
+print("Rows = TRUE, Cols = PRED")
+print("      0   1   2")
+print(confusion_matrix(y_test, y_pred_test))
 
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred))
+print("\nClassification Report (Test):")
+print(classification_report(y_test, y_pred_test))
+
+print("\n=== TRAIN RESULTS ===")
+print("Accuracy:", accuracy_score(y_train, y_pred_train))
+
+print("\nConfusion Matrix (Train):")
+print("Rows = TRUE, Cols = PRED")
+print("      0   1   2")
+print(confusion_matrix(y_train, y_pred_train))
 
 # =========================
 # BASELINES
@@ -141,12 +149,35 @@ print("Random:", accuracy_score(y_test, random_preds))
 print("Majority:", accuracy_score(y_test, majority_preds))
 
 # =========================
-# EXTRA INSIGHT
+# HUMAN PERFORMANCE
 # =========================
 
-print("\nAverage episode length:")
-print(df.groupby("episode")["step"].max().mean())
+print("\n=== HUMAN PERFORMANCE ===")
 
-print("\nSuccess rate:")
+avg_steps = df.groupby("episode")["step"].max().mean()
+print("Average human steps:", avg_steps)
+
 if "success" in df.columns:
-    print(df["success"].mean())
+    print("Success rate:", df["success"].mean())
+
+# =========================
+# MODEL STEP ESTIMATE (NEW)
+# =========================
+
+print("\n=== MODEL STEP ESTIMATE ===")
+
+# approximate: how long model would take given its mistakes
+test_steps = df.iloc[y_test.index]["step"].values
+
+# if correct → same step
+# if wrong → penalize (simulate inefficiency)
+penalty = 5  # tweak this if you want stricter penalty
+
+model_steps = []
+for i in range(len(y_test)):
+    if y_pred_test[i] == y_test[i]:
+        model_steps.append(test_steps[i])
+    else:
+        model_steps.append(test_steps[i] + penalty)
+
+print("Estimated model steps:", np.mean(model_steps))

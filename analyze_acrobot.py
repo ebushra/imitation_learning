@@ -202,3 +202,35 @@ print("Average steps:", np.mean(episode_steps))
 print("Min steps:", np.min(episode_steps))
 print("Max steps:", np.max(episode_steps))
 print("Success rate:", successes / num_episodes)
+
+import gymnasium as gym
+import imageio
+import numpy as np
+
+print("\n=== RECORDING MODEL PLAY ===")
+
+env = gym.make("Acrobot-v1", render_mode="rgb_array")
+
+frames = []
+
+obs, _ = env.reset()
+
+for step in range(500):
+    frame = env.render()
+    frames.append(frame)
+
+    state = np.array(obs).reshape(1, -1)
+    action = model.predict(state)[0]
+
+    obs, reward, terminated, truncated, _ = env.step(int(action))
+    done = terminated or truncated
+
+    if done:
+        break
+
+env.close()
+
+# save gif
+imageio.mimsave("/opt/render/project/src/acrobot_model.gif", frames, fps=30)
+
+print("Saved GIF: go to https://imitation-learning.onrender.com/download-gif")

@@ -37,11 +37,7 @@ def run(model, scaler, X_train, X_test, y_train, y_test, df):
         env = gym.make("Acrobot-v1")
 
         def obs_to_state(obs):
-            cos1, sin1, cos2, sin2, d1, d2 = obs
-            import numpy as np
-            t1 = np.arctan2(sin1, cos1)
-            t2 = np.arctan2(sin2, cos2)
-            return np.array([t1, t2, d1, d2])
+            return np.array(obs, dtype=float)
 
         steps_list = []
         successes = 0

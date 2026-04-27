@@ -26,7 +26,7 @@ def run(model, scaler, X_train, X_test, y_train, y_test, df):
     print(df.groupby("episode")["step"].max().mean())
 
     print("\nSuccess rate:")
-    print(df["done"].mean())
+    print(df["success"].mean())
 
     # optional rollout
     try:

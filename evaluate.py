@@ -68,7 +68,6 @@ def run(model, scaler, X_train, X_test, y_train, y_test, df):
         env.close()
 
         print("\nAvg steps:", np.mean(steps_list))
-        print("Success rate:", successes / 5)
 
     except Exception as e:
         print("Rollout failed:", e)

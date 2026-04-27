@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 DATA_DIR = "/var/data/human_data"
-PATTERN = os.path.join(DATA_DIR, "acrobot_ba0607dd-1bbe-4ef0-a267-0eae6365ba20.csv")
+PATTERN = os.path.join(DATA_DIR, "acrobot_ba0607dd-1bbe-4ef0-a267-0eae6365ba20*.csv")
 
 
 def parse_state(s):

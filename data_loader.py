@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 DATA_DIR = "/var/data/human_data"
-PATTERN = os.path.join(DATA_DIR, "acrobot*.csv")
+PATTERN = os.path.join(DATA_DIR, "acrobot_ba0607dd-1bbe-4ef0-a267-0eae6365ba20.csv")
 
 
 def parse_state(s):
@@ -24,9 +24,16 @@ def load_data():
     dfs = []
 
     for f in files:
-        print(" -", f)
         df = pd.read_csv(f)
+
         df["source_file"] = os.path.basename(f)
+    
+        episode_lengths = df.groupby(["user_id", "episode"])["step"].transform("count")
+        df["success"] = episode_lengths < 500  # ONLY column changed
+    
+        tmp_path = f + ".tmp"
+        df.to_csv(tmp_path, index=False)
+        os.replace(tmp_path, f)  # atomic swap
         dfs.append(df)
 
     df = pd.concat(dfs, ignore_index=True)

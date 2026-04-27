@@ -27,7 +27,7 @@ class WebAcrobot:
         self.last_obs = obs
         done = terminated or truncated
 
-        if done:
+        if terminated:
             self.success = True
 
         return obs, reward, done

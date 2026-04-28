@@ -10,6 +10,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
 
 import gymnasium as gym
+from sklearn.neighbors import NearestNeighbors
+import numpy as np
 
 # =========================
 # CONFIG
@@ -188,6 +190,17 @@ for f in files:
 
         print("\nAverage rollout length:")
         print(np.mean(rollout_lengths))
+
+        nn = NearestNeighbors(n_neighbors=1)
+        nn.fit(X_train)
+        
+        distances, _ = nn.kneighbors(X_rollout)
+        
+        print("Mean distance to training set:", distances.mean())
+        print("Median distance:", np.median(distances))
+        print("Max distance:", distances.max())
+        overlap = np.exp(-distances.mean())
+        print("Overlap: ", overlap)
 
     except Exception as e:
 

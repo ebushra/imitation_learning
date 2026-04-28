@@ -11,7 +11,6 @@ from sklearn.metrics import accuracy_score
 
 import gymnasium as gym
 from sklearn.neighbors import NearestNeighbors
-import numpy as np
 
 # =========================
 # CONFIG
@@ -28,30 +27,27 @@ def parse_state(s):
     try:
         if not isinstance(s, str):
             return None
-
         return np.array(json.loads(s), dtype=float)
-
     except:
         return None
 
 # =========================
-# MODEL ROLLOUT
+# ROLLOUT
 # =========================
 
-def rollout_model(model, scaler, episodes=5):
+def rollout_model(model, scaler, episodes=25):
 
     env = gym.make("Acrobot-v1")
 
     rollout_lengths = []
     all_states = []
+    successes = 0
 
     for ep in range(episodes):
 
         obs, _ = env.reset()
-
         done = False
         steps = 0
-
         episode_states = []
 
         while not done and steps < 500:
@@ -65,21 +61,27 @@ def rollout_model(model, scaler, episodes=5):
             done = terminated or truncated
 
             episode_states.append(obs)
-
             steps += 1
 
         rollout_lengths.append(steps)
         all_states.extend(episode_states)
 
+        if steps < 500:
+            successes += 1
+
     env.close()
 
-    return rollout_lengths, np.array(all_states)
+    success_rate = successes / episodes
+
+    return rollout_lengths, np.array(all_states), success_rate
 
 # =========================
 # MAIN
 # =========================
 
 files = glob.glob(PATTERN)
+
+results = {}
 
 print("\nFound files:")
 for f in files:
@@ -93,29 +95,21 @@ for f in files:
 
     try:
 
-        # =========================
-        # LOAD CSV
-        # =========================
-
         df = pd.read_csv(f)
 
         print("Rows:", len(df))
 
-        # remove training rows ONLY
         if "training" in df.columns:
             df = df[df["training"] != True]
 
-        # parse states
         df["state_parsed"] = df["state"].apply(parse_state)
 
         before = len(df)
-
         df = df.dropna(subset=["state_parsed"])
-
         print("Dropped bad rows:", before - len(df))
 
         # =========================
-        # HUMAN EPISODE LENGTHS
+        # HUMAN STATS
         # =========================
 
         human_episode_lengths = (
@@ -126,43 +120,33 @@ for f in files:
 
         avg_human_length = np.mean(human_episode_lengths)
 
-        print("\nAverage human episode length:")
-        print(avg_human_length)
+        print("\nAverage human episode length:", avg_human_length)
 
         # =========================
-        # BUILD DATASET
+        # DATASET
         # =========================
 
         X = np.vstack(df["state_parsed"].values)
         y = df["action"].astype(int).values
 
-        print("\nDataset shape:", X.shape)
-
-        # skip tiny datasets
         if len(X) < 50:
             print("Skipping: not enough data")
             continue
 
         # =========================
-        # TRAIN / TEST SPLIT
+        # TRAIN / TEST
         # =========================
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
+            X, y,
             test_size=0.2,
             random_state=42,
             stratify=y
         )
 
         scaler = StandardScaler()
-
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
-
-        # =========================
-        # MODEL
-        # =========================
 
         model = MLPClassifier(
             hidden_layer_sizes=(64, 64),
@@ -172,41 +156,54 @@ for f in files:
 
         model.fit(X_train, y_train)
 
-        # =========================
-        # ACCURACY
-        # =========================
+        accuracy = accuracy_score(y_test, model.predict(X_test))
 
-        y_pred = model.predict(X_test)
-
-        accuracy = accuracy_score(y_test, y_pred)
-
-        print("\nModel accuracy:")
-        print(accuracy)
+        print("\nModel accuracy:", accuracy)
 
         # =========================
         # ROLLOUT
         # =========================
 
-        rollout_lengths, X_rollout = rollout_model(model, scaler)
+        rollout_lengths, X_rollout, rollout_success = rollout_model(model, scaler)
 
-        print("\nRollout episode lengths:")
-        print(rollout_lengths)
+        avg_rollout_length = np.mean(rollout_lengths)
 
-        print("\nAverage rollout length:")
-        print(np.mean(rollout_lengths))
+        print("\nRollout lengths:", rollout_lengths)
+        print("Average rollout length:", avg_rollout_length)
+        print("Rollout success rate:", rollout_success)
+
+        # =========================
+        # OVERLAP
+        # =========================
 
         nn = NearestNeighbors(n_neighbors=1)
         nn.fit(X_train)
-        
+
         distances, _ = nn.kneighbors(X_rollout)
-        
-        print("Mean distance to training set:", distances.mean())
-        print("Median distance:", np.median(distances))
-        print("Max distance:", distances.max())
+
         overlap = np.exp(-distances.mean())
-        print("Overlap: ", overlap)
+
+        print("Overlap:", overlap)
+
+        # =========================
+        # STORE RESULTS
+        # =========================
+
+        results[os.path.basename(f)] = {
+            "human_episode_len": float(avg_human_length),
+            "accuracy": float(accuracy),
+            "rollout_len": float(avg_rollout_length),
+            "overlap": float(overlap),
+            "rollout_success": float(rollout_success),
+        }
 
     except Exception as e:
-
         print("\nFAILED:")
         print(e)
+
+# =========================
+# FINAL SUMMARY
+# =========================
+
+print("\n\n================ FINAL RESULTS ================\n")
+print(json.dumps(results, indent=4))

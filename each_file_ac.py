@@ -43,6 +43,7 @@ def rollout_model(model, scaler, episodes=5):
     env = gym.make("Acrobot-v1")
 
     rollout_lengths = []
+    all_states = []
 
     for ep in range(episodes):
 
@@ -51,25 +52,28 @@ def rollout_model(model, scaler, episodes=5):
         done = False
         steps = 0
 
+        episode_states = []
+
         while not done and steps < 500:
 
             state = np.array(obs, dtype=float).reshape(1, -1)
-
             state = scaler.transform(state)
 
             action = model.predict(state)[0]
 
             obs, reward, terminated, truncated, _ = env.step(int(action))
-
             done = terminated or truncated
+
+            episode_states.append(obs)
 
             steps += 1
 
         rollout_lengths.append(steps)
+        all_states.extend(episode_states)
 
     env.close()
 
-    return rollout_lengths
+    return rollout_lengths, np.array(all_states)
 
 # =========================
 # MAIN
@@ -183,7 +187,7 @@ for f in files:
         # ROLLOUT
         # =========================
 
-        rollout_lengths = rollout_model(model, scaler)
+        rollout_lengths, X_rollout = rollout_model(model, scaler)
 
         print("\nRollout episode lengths:")
         print(rollout_lengths)

@@ -3,7 +3,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 from load_data_mc import load_data
-import evaluate_mc
+import evaluate_mc as evaluate
 
 df, X, y = load_data()
 

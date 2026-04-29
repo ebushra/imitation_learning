@@ -41,6 +41,12 @@ def load_data():
     df["state_parsed"] = df["state"].apply(parse_state)
     df = df.dropna(subset=["state_parsed"])
 
+    
+    if "training" in df.columns:
+        df = df[df["training"] != True]
+
+    print("Rows after removing training data:", len(df))
+
     X = np.vstack(df["state_parsed"].values)
     y = df["action"].astype(int).values
 

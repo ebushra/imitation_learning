@@ -37,8 +37,6 @@ def load_data():
         dfs.append(df)
 
     df = pd.concat(dfs, ignore_index=True)
-    y = df["action"].astype(int).values
-    print("Action distribution before drops:", np.bincount(y))
 
     df["state_parsed"] = df["state"].apply(parse_state)
     df = df.dropna(subset=["state_parsed"])
@@ -50,7 +48,7 @@ def load_data():
     print("Rows after removing training data:", len(df))
 
     X = np.vstack(df["state_parsed"].values)
-   
+    y = df["action"].astype(int).values
 
     print("\nDataset shape:", X.shape)
     print("Action distribution:", np.bincount(y))

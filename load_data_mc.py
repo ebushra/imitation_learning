@@ -63,9 +63,6 @@ def load_data():
 
     print("\nTotal rows:", len(df))
 
-    y = df["action"].astype(int).values
-    print("Action distribution before drops:", np.bincount(y))
-
     # =========================
     # PARSE STATES
     # =========================
@@ -113,7 +110,7 @@ def load_data():
     # =========================
 
     X = np.vstack(df["state_parsed"].values)
-    #y = df["action"].astype(int).values
+    y = df["action"].astype(int).values
 
     print("\nDataset shape:", X.shape)
     print("Action distribution:", np.bincount(y))

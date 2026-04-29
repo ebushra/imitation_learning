@@ -2,8 +2,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 
-from data_loader import load_data
-import evaluate
+from load_data_mc import load_data
+import evaluate_mc
 
 df, X, y = load_data()
 
